@@ -1,0 +1,26 @@
+# Secrets
+.env
+
+# SBOM generes
+sbom/
+
+# Logs
+*.log
+logs/
+
+# Dist
+dist/
+
+# Systeme
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Docker
+docker-compose.override.yml
+
+# Old dirs (pre-hardening)
+/php/
+/wordpress/
