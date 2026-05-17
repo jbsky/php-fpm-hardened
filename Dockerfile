@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: builder — compile les extensions PHP
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm-alpine AS builder
+FROM php:8.5-fpm-alpine AS builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -64,7 +64,7 @@ RUN php -v | head -1 | awk '{print $2}' > /tmp/PHP_VER && \
 # ---------------------------------------------------------------------------
 # Stage 2: production — runtime minimal
 # ---------------------------------------------------------------------------
-FROM php:8.4-fpm-alpine AS production
+FROM php:8.5-fpm-alpine AS production
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
