@@ -1,0 +1,193 @@
+# =====================================================================
+#  Pipeline GitLab CI — PHP-FPM Hardened
+#  - Lint (hadolint + shellcheck)
+#  - Build multi-arch via buildx + registry cache
+#  - Sign (cosign keyless OIDC GitLab)
+#  - Scan (Trivy SARIF)
+#  - Release (tarball sur tag)
+# =====================================================================
+
+stages:
+  - lint
+  - build
+  - sign
+  - scan
+  - release
+
+variables:
+  DOCKER_BUILDKIT: "1"
+  REGISTRY: $CI_REGISTRY
+  IMAGE_NAMESPACE: $CI_PROJECT_PATH
+  IMAGE_NAME: php-fpm-hardened
+  COSIGN_EXPERIMENTAL: "1"
+  PLATFORMS: "linux/amd64"
+
+default:
+  image: docker:27
+  services:
+    - docker:27-dind
+  before_script:
+    - docker info >/dev/null
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# ---------- LINT --------------------------------------------------------
+hadolint:
+  stage: lint
+  image: hadolint/hadolint:latest-alpine
+  before_script: []
+  services: []
+  script:
+    - hadolint --failure-threshold warning Dockerfile
+
+shellcheck:
+  stage: lint
+  image: koalaman/shellcheck-alpine:stable
+  before_script: []
+  services: []
+  script:
+    - shellcheck scripts/*.sh
+
+# ---------- BUILD -------------------------------------------------------
+build:
+  stage: build
+  script:
+    - apk add --no-cache git curl jq
+    # Resolve PHP version for tagging
+    - |
+      PHP_VER=$(docker run --rm php:8.4-fpm-alpine php -v | head -1 | awk '{print $2}')
+      echo "Building PHP-FPM ${PHP_VER}"
+    - docker context create tls-ctx
+    - |
+      mkdir -p /tmp/buildkit
+      cat > /tmp/buildkit/buildkitd.toml <<TOML
+      [registry."${CI_REGISTRY}"]
+        ca = ["/etc/ssl/certs/ca-certificates.crt"]
+      TOML
+    - |
+      docker buildx create --use --name builder \
+        --config /tmp/buildkit/buildkitd.toml \
+        --driver-opt network=host \
+        --driver-opt "env.http_proxy=${http_proxy:-}" \
+        --driver-opt "env.https_proxy=${https_proxy:-}" \
+        --driver-opt "env.HTTP_PROXY=${HTTP_PROXY:-}" \
+        --driver-opt "env.HTTPS_PROXY=${HTTPS_PROXY:-}" \
+        --driver-opt "env.no_proxy=${BUILDKIT_NO_PROXY:-}" \
+        --driver-opt "env.NO_PROXY=${BUILDKIT_NO_PROXY:-}" \
+        tls-ctx
+    - |
+      TAG="${PHP_VER}"
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        EXTRA_TAGS="-t ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest -t ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:${CI_COMMIT_TAG}"
+      else
+        EXTRA_TAGS="-t ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest"
+      fi
+    - |
+      docker buildx build \
+        --platform "${PLATFORMS}" \
+        --build-arg http_proxy="${http_proxy:-}" \
+        --build-arg https_proxy="${https_proxy:-}" \
+        --build-arg HTTP_PROXY="${HTTP_PROXY:-}" \
+        --build-arg HTTPS_PROXY="${HTTPS_PROXY:-}" \
+        --build-arg no_proxy="${no_proxy:-}" \
+        --build-arg NO_PROXY="${NO_PROXY:-}" \
+        --secret id=ca-certs,src=/etc/ssl/certs/ca-certificates.crt \
+        --label "org.opencontainers.image.source=${CI_PROJECT_URL}" \
+        --label "org.opencontainers.image.revision=${CI_COMMIT_SHA}" \
+        --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --label "org.opencontainers.image.version=${TAG}" \
+        -t ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:${TAG} \
+        ${EXTRA_TAGS} \
+        --load \
+        .
+    - docker push ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:${TAG}
+    - docker push ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        docker push ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:${CI_COMMIT_TAG}
+      fi
+    - docker inspect ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:${TAG} | jq -r '.[0].RepoDigests[0]' | tee image-digest.txt
+  artifacts:
+    paths:
+      - image-digest.txt
+    expire_in: 30 days
+  tags:
+    - build
+
+# ---------- SIGN (cosign keyless OIDC) ----------------------------------
+sign:
+  stage: sign
+  image: alpine:3.21
+  before_script: []
+  services: []
+  needs: ["build"]
+  id_tokens:
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  script:
+    - |
+      if [ ! -f image-digest.txt ]; then
+        echo "No image built, skipping sign."
+        exit 0
+      fi
+    - apk add --no-cache cosign
+    - DIGEST=$(grep -o 'sha256:[a-f0-9]*' image-digest.txt | sed -n '1p')
+    - cosign sign --yes ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}@${DIGEST}
+  allow_failure: true
+
+# ---------- SCAN --------------------------------------------------------
+scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  before_script: []
+  services: []
+  needs: ["build"]
+  script:
+    - |
+      if [ ! -f image-digest.txt ]; then
+        echo "No image built, skipping scan."
+        exit 0
+      fi
+    - export TRIVY_USERNAME="$CI_REGISTRY_USER"
+    - export TRIVY_PASSWORD="$CI_REGISTRY_PASSWORD"
+    - export SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
+    - trivy image --severity HIGH,CRITICAL --ignore-unfixed
+        --format sarif --output trivy-php.sarif
+        ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest
+    - trivy image --severity HIGH,CRITICAL --ignore-unfixed
+        ${REGISTRY}/${IMAGE_NAMESPACE}/${IMAGE_NAME}:latest
+  artifacts:
+    paths:
+      - trivy-*.sarif
+    reports:
+      sast: trivy-php.sarif
+    expire_in: 90 days
+  allow_failure: true
+
+# ---------- RELEASE (sur tag) -------------------------------------------
+release:tarball:
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  image: alpine:3.21
+  before_script: []
+  services: []
+  script:
+    - apk add --no-cache tar gzip coreutils
+    - mkdir -p dist
+    - tar --exclude='.git' --exclude='dist'
+          --transform "s,^,php-fpm-hardened-${CI_COMMIT_TAG}/,"
+          -czf dist/php-fpm-hardened-${CI_COMMIT_TAG}.tar.gz .
+    - cd dist && sha256sum php-fpm-hardened-${CI_COMMIT_TAG}.tar.gz > php-fpm-hardened-${CI_COMMIT_TAG}.tar.gz.sha256
+  artifacts:
+    paths:
+      - dist/
+    expire_in: never
