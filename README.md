@@ -4,7 +4,7 @@
 [![Docker Hub](https://img.shields.io/docker/v/jbsky/php-fpm-hardened?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/jbsky/php-fpm-hardened)
 [![Hardening](https://img.shields.io/badge/hardening-platine-blueviolet)](https://github.com/jbsky/php-fpm-hardened#security--verification)
 
-Image Docker PHP-FPM 8.4 Alpine multi-stage hardenee pour WordPress.
+Image Docker PHP-FPM 8.5 hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
 
 ## Extensions incluses
 
@@ -24,26 +24,28 @@ Image Docker PHP-FPM 8.4 Alpine multi-stage hardenee pour WordPress.
 
 ## Hardening
 
-- Multi-stage build (builder + production)
-- Alpine minimal (pas de compilateurs dans l'image finale)
-- Execution non-root (uid 1999, user `phpfpm`)
-- `disable_functions` : exec, passthru, shell_exec, system, proc_open, popen
-- `expose_php = Off`, `cgi.fix_pathinfo = 0`
-- `open_basedir` restreint a `/var/www/html:/tmp`
-- Sessions securisees (httponly, secure, samesite strict)
-- OPcache + JIT tracing
-- Healthcheck FPM integre (ping/pong via cgi-fcgi)
-- Docker Compose : `read_only`, `no-new-privileges`, `cap_drop: ALL`
-- `tmpfs` pour /tmp, /var/run, /var/log
-- CI/CD : lint (hadolint + shellcheck), build, sign (cosign), scan (Trivy)
+| Mesure | Detail |
+|--------|--------|
+| FROM scratch | Zero shell, zero package manager dans l'image finale |
+| Go static init | Binary entrypoint + healthcheck (pas de script shell) |
+| tini PID 1 | Signal forwarding + zombie reaping |
+| Non-root | uid 1999, user `phpfpm` |
+| Compiler hardening | RELRO, PIE, SSP, FORTIFY_SOURCE, stack-clash, NX |
+| disable_functions | exec, passthru, shell_exec, system, proc_open, popen |
+| open_basedir | Restreint a `/var/www/html:/tmp` |
+| expose_php = Off | Pas de header X-Powered-By |
+| Sessions securisees | httponly, secure, samesite strict |
+| Docker Compose | `read_only`, `no-new-privileges`, `cap_drop: ALL` |
+| tmpfs | /tmp, /var/run, /var/log (pas de write sur rootfs) |
 
 ## Usage rapide
 
 ```bash
+cp .env.example .env
 make build   # Build l'image
-make up      # Demarre
+make up      # Demarre la stack
 make test    # Smoke tests (healthcheck + extensions + security)
-make scan    # Trivy scan
+make scan    # Trivy vulnerability scan
 make down    # Arrete
 ```
 
@@ -62,33 +64,45 @@ Variables d'environnement (via `.env` ou docker-compose) :
 ## Architecture
 
 ```
-Dockerfile              # Multi-stage build
-docker-compose.yml      # Stack hardenee
-Makefile                # Raccourcis dev
-conf/
-  php/
-    php-hardened.ini    # Securite PHP
-    opcache.ini         # OPcache + JIT
-    wordpress.ini       # Uploads, realpath cache
-  fpm/
-    php-fpm.conf        # Config master FPM
-    www.conf            # Pool www (workers, status)
-    docker.conf         # Docker stderr override
-scripts/
-  entrypoint.sh         # Init runtime
-  test.sh               # Smoke tests
-  deploy.sh             # Build/scan/sbom helper
+php-fpm-hardened/
+├── Dockerfile              # Multi-stage build (Alpine → FROM scratch)
+├── Dockerfile.wordpress    # Variante avec WP-CLI
+├── docker-compose.yml      # Stack hardenee (read_only, cap_drop)
+├── Makefile                # Raccourcis dev
+├── versions.json           # Versions trackees (PHP, Alpine)
+├── go.mod + init.go        # Go static init binary
+├── conf/
+│   ├── php/
+│   │   ├── php-hardened.ini    # Securite PHP
+│   │   ├── opcache.ini         # OPcache + JIT
+│   │   └── wordpress.ini       # Uploads, realpath cache
+│   └── fpm/
+│       ├── php-fpm.conf        # Config master FPM
+│       ├── www.conf            # Pool www (workers, status)
+│       └── docker.conf         # Docker stderr override
+├── scripts/
+│   ├── entrypoint.sh       # Init runtime (legacy, unused in Platine)
+│   ├── test.sh             # Smoke tests
+│   └── deploy.sh           # Build/scan/sbom helper
+└── .github/workflows/
+    ├── build-push.yml      # Build + sign + scan + release
+    ├── version-watch.yml   # Daily PHP patch detection
+    └── security-audit.yml  # Weekly Trivy + Grype
 ```
 
 ## CI/CD
 
-| Stage | Job |
-|-------|-----|
+Dual pipeline (GitLab + GitHub Actions) :
+
+| Stage | Description |
+|-------|-------------|
 | lint | hadolint + shellcheck |
-| build | buildx multi-arch + registry push |
+| build | buildx multi-arch + push (ghcr.io + Docker Hub) |
 | sign | cosign keyless OIDC |
-| scan | Trivy SARIF |
-| release | tarball sur tag |
+| scan | Trivy SARIF + Grype |
+| attest | SBOM + SLSA provenance (level 2) |
+| version-watch | Cron quotidien — rebuild auto sur nouvelle version PHP |
+| security-audit | Cron hebdomadaire — scan vulnerabilites sur images publiees |
 
 ## Security & Verification
 
@@ -123,3 +137,7 @@ COSIGN_REPOSITORY=ghcr.io/jbsky/php-fpm-hardened \
 | Cosign signed | OIDC keyless signature via Sigstore transparency log |
 | SBOM | Software Bill of Materials embedded in manifest |
 | SLSA provenance | Build provenance attestation (level 2) |
+
+## License
+
+MIT
