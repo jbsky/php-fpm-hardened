@@ -124,7 +124,7 @@ build:
       - image-digest.txt
     expire_in: 30 days
   tags:
-    - build
+    - docker
 
 # ---------- BUILD WORDPRESS VARIANT -------------------------------------
 build:wordpress:
@@ -169,7 +169,7 @@ build:wordpress:
       - wp-image-digest.txt
     expire_in: 30 days
   tags:
-    - build
+    - docker
 
 # ---------- SIGN (cosign keyless OIDC) ----------------------------------
 sign:

@@ -143,7 +143,9 @@ LABEL org.opencontainers.image.title="php-fpm-hardened" \
       org.opencontainers.image.description="PHP-FPM FROM scratch — WordPress-optimized, non-root, zero shell" \
       org.opencontainers.image.vendor="jbsky" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/jbsky/php-fpm-hardened"
+      org.opencontainers.image.source="https://github.com/jbsky/php-fpm-hardened" \
+      security.hardening.tier="platine" \
+      security.hardening.features="from-scratch,go-init,tini-pid1,zero-shell,non-root,compiler-hardening,cosign-signed,sbom,slsa-provenance"
 
 # User accounts
 COPY --link --from=prep /etc/passwd /etc/passwd
