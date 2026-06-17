@@ -84,10 +84,12 @@ php-fpm-hardened/
 │   ├── entrypoint.sh       # Init runtime (legacy, unused in Platine)
 │   ├── test.sh             # Smoke tests
 │   └── deploy.sh           # Build/scan/sbom helper
-└── .github/workflows/
-    ├── build-push.yml      # Build + sign + scan + release
-    ├── version-watch.yml   # Daily PHP patch detection
-    └── security-audit.yml  # Weekly Trivy + Grype
+└── .github/
+    ├── dependabot.yml      # Weekly GH Actions + Docker updates
+    └── workflows/
+        ├── build-push.yml      # Build + sign + scan + release
+        ├── version-watch.yml   # Daily PHP patch detection
+        └── security-audit.yml  # Weekly Trivy + Grype
 ```
 
 ## CI/CD
