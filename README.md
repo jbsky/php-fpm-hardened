@@ -111,7 +111,6 @@ COSIGN_REPOSITORY=ghcr.io/jbsky/php-fpm-hardened \
   docker.io/jbsky/php-fpm-hardened:latest
 ```
 
-
 ### Hardening tier "Platine" guarantees
 
 | Property | Description |
