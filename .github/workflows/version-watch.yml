@@ -1,0 +1,98 @@
+# =====================================================================
+#  Version Watch — PHP upstream release detection
+#
+#  Quotidien 06h00 UTC :
+#    1. Check php/php-src GitHub releases for new stable patch version
+#    2. Compare with versions.json
+#    3. If update available: bump versions.json + Dockerfile FROM → commit → push
+#       (triggers build-push.yml which rebuilds, signs, and pushes)
+#
+#  Note: only checks within the configured major.minor branch (e.g. 8.5.x)
+#  Major/minor bumps require manual intervention.
+# =====================================================================
+name: version-watch
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Check & bump PHP version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check upstream version
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Current version from versions.json (e.g. "8.5")
+          CURRENT_BRANCH=$(jq -r '.php' versions.json)
+          echo "current_branch=${CURRENT_BRANCH}"
+
+          # Current full version from Dockerfile FROM line
+          CURRENT_FULL=$(grep -oP 'FROM php:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1 || echo "")
+          if [ -z "$CURRENT_FULL" ]; then
+            # Dockerfile uses major.minor only (e.g. php:8.5-fpm-alpine)
+            CURRENT_FULL="${CURRENT_BRANCH}.0"
+          fi
+          echo "current_full=${CURRENT_FULL}"
+
+          # Check Docker Hub for latest tag matching our branch
+          # php official image tags follow pattern: 8.5.3-fpm-alpine
+          LATEST=$(curl -fsSL "https://hub.docker.com/v2/repositories/library/php/tags?page_size=100&name=${CURRENT_BRANCH}" \
+            | jq -r --arg branch "$CURRENT_BRANCH" \
+              '[.results[].name | select(test("^" + $branch + "\\.[0-9]+-fpm-alpine$"))] | map(ltrimstr($branch + ".") | split("-") | .[0] | tonumber) | max // empty' \
+          )
+
+          if [ -z "$LATEST" ]; then
+            echo "Could not determine latest patch version for ${CURRENT_BRANCH}"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LATEST_FULL="${CURRENT_BRANCH}.${LATEST}"
+          echo "latest_full=${LATEST_FULL}"
+
+          # Check if the Dockerfile already uses this version
+          if grep -q "FROM php:${LATEST_FULL}-fpm-alpine" Dockerfile; then
+            echo "Already up to date (${LATEST_FULL})"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Update available: ${CURRENT_FULL} → ${LATEST_FULL}"
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+            echo "version=${LATEST_FULL}" >> "$GITHUB_OUTPUT"
+            echo "previous=${CURRENT_FULL}" >> "$GITHUB_OUTPUT"
+            echo "branch=${CURRENT_BRANCH}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version
+        if: steps.check.outputs.updated == 'true'
+        env:
+          NEW_VER: ${{ steps.check.outputs.version }}
+          BRANCH: ${{ steps.check.outputs.branch }}
+        run: |
+          set -euo pipefail
+
+          # Update Dockerfile FROM line (replace php:X.Y.Z-fpm-alpine or php:X.Y-fpm-alpine)
+          sed -i "s|FROM php:${BRANCH}[0-9.]*-fpm-alpine|FROM php:${NEW_VER}-fpm-alpine|" Dockerfile
+
+          echo "Updated Dockerfile to php:${NEW_VER}-fpm-alpine"
+          grep "^FROM php:" Dockerfile
+
+      - name: Commit & push
+        if: steps.check.outputs.updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Dockerfile
+          git commit -m "chore(deps): bump php ${{ steps.check.outputs.previous }} → ${{ steps.check.outputs.version }}"
+          git push
