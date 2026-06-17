@@ -1,0 +1,32 @@
+# =====================================================================
+#  PHP-FPM Hardened — WordPress variant
+#  Layers WordPress core files onto the hardened base image.
+#  wp-content is NOT baked (mounted as volume at runtime).
+# =====================================================================
+
+ARG BASE_IMAGE=gitlab.home.arpa:5050/docker/php/php-fpm-hardened:latest
+ARG WP_VERSION=6.8
+
+# --- Stage 1: fetch WordPress files ---
+FROM wordpress:${WP_VERSION} AS wp-source
+
+# --- Stage 2: combine with hardened base ---
+FROM ${BASE_IMAGE}
+
+LABEL org.opencontainers.image.title="php-fpm-hardened-wordpress" \
+      org.opencontainers.image.description="Hardened PHP-FPM + WordPress core"
+
+USER root
+
+# Copy WordPress core (without wp-content, populated via volume)
+COPY --from=wp-source /usr/src/wordpress /var/www/html/
+
+# Create wp-content mountpoint with correct ownership
+RUN mkdir -p /var/www/html/wp-content && \
+    chown -R 1999:1999 /var/www/html
+
+USER 1999:1999
+WORKDIR /var/www/html
+EXPOSE 9000
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/init"]
+CMD ["php-fpm"]
