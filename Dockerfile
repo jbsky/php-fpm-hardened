@@ -87,7 +87,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /init .
 # ---------------------------------------------------------------------------
 # Stage 2: prep (assemble runtime filesystem)
 # ---------------------------------------------------------------------------
-FROM alpine:3.23 AS prep
+FROM alpine:3.24 AS prep
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -96,7 +96,8 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN apk add --no-cache \
     ca-certificates freetype gmp icu-libs imagemagick-libs \
     libbz2 libcurl libjpeg-turbo libpng libwebp libxml2 libzip \
-    oniguruma pcre2 tzdata zlib libgcc libstdc++ tini-static
+    oniguruma pcre2 tzdata zlib libgcc libstdc++ tini-static \
+    readline sqlite-libs argon2-libs gnu-libiconv libsodium
 
 # Create non-root user
 RUN addgroup -g 1999 -S phpfpm \

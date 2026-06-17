@@ -303,9 +303,10 @@ func entrypoint() error {
 			"opcache.validate_timestamps = 1\n" +
 			"opcache.jit = off\n"
 		if err := writeFile(filepath.Join(phpConfDir, "zz-debug.ini"), content, 0644); err != nil {
-			return fmt.Errorf("write debug ini: %w", err)
+			log("WARNING: cannot enable WP_DEBUG (read-only fs?): %v", err)
+		} else {
+			log("WP_DEBUG mode enabled")
 		}
-		log("WP_DEBUG mode enabled")
 	}
 
 	// PHP_PM_MAX_CHILDREN override → modify www.conf in-place
@@ -319,7 +320,7 @@ func entrypoint() error {
 	if v := os.Getenv("PHP_MEMORY_LIMIT"); v != "" {
 		content := "memory_limit = " + v + "\n"
 		if err := writeFile(filepath.Join(phpConfDir, "zz-memory.ini"), content, 0644); err != nil {
-			return fmt.Errorf("write memory ini: %w", err)
+			log("WARNING: cannot set memory_limit (read-only fs?): %v", err)
 		}
 	}
 
@@ -327,7 +328,7 @@ func entrypoint() error {
 	if v := os.Getenv("PHP_UPLOAD_MAX_FILESIZE"); v != "" {
 		content := "upload_max_filesize = " + v + "\npost_max_size = " + v + "\n"
 		if err := writeFile(filepath.Join(phpConfDir, "zz-upload.ini"), content, 0644); err != nil {
-			return fmt.Errorf("write upload ini: %w", err)
+			log("WARNING: cannot set upload_max_filesize (read-only fs?): %v", err)
 		}
 	}
 
