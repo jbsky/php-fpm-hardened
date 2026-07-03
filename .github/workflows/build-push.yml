@@ -98,8 +98,14 @@ jobs:
         id: versions
         run: |
           set -euo pipefail
-          # Pull base image to get exact PHP version
-          PHP_VER=$(docker run --rm php:8.4-fpm-alpine php -r 'echo PHP_VERSION;')
+          # Read the version actually being built from the Dockerfile's own
+          # FROM line (matches version-watch.yml's own parsing). The prior
+          # `docker run --rm php:8.4-fpm-alpine php -r 'echo PHP_VERSION;'`
+          # hardcoded the 8.4 branch as a leftover from before the repo
+          # moved to 8.5 -- it kept resolving 8.4's current patch (8.4.22)
+          # and mistagging :latest with it, even though the image being
+          # built and pushed was genuinely PHP 8.5.7.
+          PHP_VER=$(grep -oP '^FROM php:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1)
           echo "php=${PHP_VER}" >> "$GITHUB_OUTPUT"
           echo "### Resolved versions" >> "$GITHUB_STEP_SUMMARY"
           echo "- PHP: ${PHP_VER}" >> "$GITHUB_STEP_SUMMARY"
