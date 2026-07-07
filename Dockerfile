@@ -17,7 +17,7 @@
 # ---------------------------------------------------------------------------
 # Stage 0: builder — compile PHP extensions from source
 # ---------------------------------------------------------------------------
-FROM php:8.5.7-fpm-alpine@sha256:fd9669cdc9caa2bc4857a2c9f6b5e86c47a7f85043a6717c29901ca4a8b1cd4e AS builder
+FROM php:8.5.8-fpm-alpine@sha256:fd9669cdc9caa2bc4857a2c9f6b5e86c47a7f85043a6717c29901ca4a8b1cd4e AS builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
