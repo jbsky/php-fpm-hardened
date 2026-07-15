@@ -1,0 +1,15 @@
+# Faux positif Grype confirme, pas une vulnerabilite reelle. Grype lit la
+# chaine de version embarquee de PHP ("8.5.8") dans le fichier de
+# l'extension PHP `curl.so` (/usr/local/lib/php/extensions/.../curl.so) et
+# l'attribue par erreur a la bibliotheque curl elle-meme -- generant une
+# vingtaine de CVE curl historiques sous "curl 8.5.8". La vraie libcurl
+# runtime (/usr/lib/libcurl.so.4.8.0, ".8.0" est un suffixe ABI/soname, pas
+# la version curl) embarque la chaine "libcurl/8.21.0" -- deja patchee,
+# confirme via `strings` sur l'image publiee. Une seule regle sur le
+# paquet (sans `vulnerability:`) supprime toute la grappe d'un coup, cause
+# racine unique. Devient inerte automatiquement si `curl`/`libcurl` est un
+# jour reellement mis a jour vers une autre version.
+ignore:
+  - package:
+      name: curl
+      version: 8.5.8
