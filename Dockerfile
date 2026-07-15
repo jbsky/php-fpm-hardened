@@ -93,11 +93,17 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 # Runtime deps only (no compilers, no build tools)
 # Split APK install to stay within proxy timeouts
+# Package list kept alphabetized: any reordering also invalidates the
+# GitHub Actions layer cache for this RUN, forcing a fresh `apk add`
+# resolution against Alpine's current v3.24 repo index instead of silently
+# reusing whatever package versions were cached the first time this exact
+# instruction text was built (apk packages get security updates within a
+# stable Alpine branch even though the base image digest doesn't change).
 RUN apk add --no-cache \
-    ca-certificates freetype gmp icu-libs imagemagick-libs \
-    libbz2 libcurl libjpeg-turbo libpng libwebp libxml2 libzip \
-    oniguruma pcre2 tzdata zlib libgcc libstdc++ tini-static \
-    readline sqlite-libs argon2-libs gnu-libiconv libsodium
+    argon2-libs ca-certificates freetype gmp gnu-libiconv icu-libs \
+    imagemagick-libs libbz2 libcurl libgcc libjpeg-turbo libpng \
+    libsodium libstdc++ libwebp libxml2 libzip oniguruma pcre2 \
+    readline sqlite-libs tini-static tzdata zlib
 
 # Create non-root user
 RUN addgroup -g 1999 -S phpfpm \
