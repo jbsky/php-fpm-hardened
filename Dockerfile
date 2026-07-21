@@ -58,11 +58,13 @@ RUN docker-php-ext-configure gd \
 # Opcache is compiled-in since PHP 8.5 — configured via ini only
 
 # Imagick from git (PECL stable not yet available for PHP 8.5)
+# hadolint ignore=DL3003
 RUN git clone --depth 1 https://github.com/Imagick/imagick.git /tmp/imagick && \
     cd /tmp/imagick && phpize && ./configure && make -j"$(nproc)" && make install && \
     docker-php-ext-enable imagick && rm -rf /tmp/imagick
 
 # Redis from git (PECL stable not yet available for PHP 8.5)
+# hadolint ignore=DL3003
 RUN git clone --depth 1 https://github.com/phpredis/phpredis.git /tmp/redis && \
     cd /tmp/redis && phpize && ./configure && make -j"$(nproc)" && make install && \
     docker-php-ext-enable redis && rm -rf /tmp/redis
