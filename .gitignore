@@ -24,3 +24,6 @@ docker-compose.override.yml
 # Old dirs (pre-hardening)
 /php/
 /wordpress/
+
+# WordPress core tarballs pulled down for manual local testing
+*.tar.gz

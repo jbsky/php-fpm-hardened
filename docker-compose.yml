@@ -55,6 +55,9 @@ services:
 networks:
   web:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.200.0.0/16
 
 volumes:
   html: { driver: local }
