@@ -38,3 +38,16 @@ last 3 semver tags" is generic hygiene, not CVE-aware. After any prune run,
 cross-check the surviving semver tags with a direct `grype <image>:<tag> --fail-on
 high --only-fixed --config .grype.yaml` scan -- if one inside the keep-window is
 still flagged, delete it explicitly.
+
+**Real incident, same day**: the first live run of these scripts deleted the *newest*
+two semver tags (`8.5.7`, `8.5.8`, the current ones) instead of the two oldest --
+`sort -t. -k1,1n -k2,2n -k3,3n -r` doesn't actually reverse on GNU coreutils 9.7 (a
+trailing global `-r` after explicit numeric `-k` keys is silently ignored), so the
+script's "descending" order was ascending. `8.5.8` was restored twice: once by a
+coincidental rebuild (editing `build-push.yml` matched its own push-path trigger),
+which was then immediately re-deleted by that same run's *own* chained cleanup job
+(still running the old, buggy code checked out at trigger time); the second and
+lasting fix copied the still-intact GHCR manifest to Docker Hub via `docker buildx
+imagetools create` after the script fix landed. `8.5.7` is a permanent (harmless)
+loss -- an old, already-superseded tag. Fixed in `7995f08`; full writeup in
+`nginx-hardened`'s `SECURITY.md`.
