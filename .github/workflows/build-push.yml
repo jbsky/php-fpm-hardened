@@ -82,6 +82,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # docker-compose.yml's php-fpm service reads its `image:` tag from
+      # `${REGISTRY:-gitlab.home.arpa:5050}/docker/php:${TAG:-latest}` --
+      # this workflow ALSO sets a shell env var named REGISTRY (env.REGISTRY
+      # = ghcr.io, used throughout for GHCR references), which collides:
+      # compose picks it up too and resolves to ghcr.io/docker/php:latest,
+      # not this repo's actual image name. Ask compose itself what it
+      # expects rather than hardcoding a guess.
+      - name: Resolve compose's expected local tag
+        id: compose-image
+        run: echo "tag=$(docker compose config --images php-fpm)" >> "$GITHUB_OUTPUT"
+
       - name: Build (load or push-by-digest)
         id: build
         uses: docker/build-push-action@v7
@@ -90,7 +101,7 @@ jobs:
           platforms: linux/amd64
           load: ${{ env.PUBLISH != 'true' }}
           outputs: ${{ env.PUBLISH == 'true' && format('type=image,name={0}/{1}/{2},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.NAMESPACE, env.IMAGE_NAME) || '' }}
-          tags: ${{ env.PUBLISH != 'true' && format('{0}:latest', env.IMAGE_NAME) || '' }}
+          tags: ${{ env.PUBLISH != 'true' && steps.compose-image.outputs.tag || '' }}
           sbom: ${{ env.PUBLISH }}
           provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=php-fpm-linux/amd64
@@ -101,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           docker pull "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
-          docker tag  "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" "${{ env.IMAGE_NAME }}:latest"
+          docker tag  "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" "${{ steps.compose-image.outputs.tag }}"
 
       - name: Build & start stack
         run: docker compose up -d --no-build php-fpm
