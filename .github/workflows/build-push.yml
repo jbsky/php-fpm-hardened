@@ -51,17 +51,20 @@ jobs:
 
   # -------------------------------------------------------------------
   #  Builds amd64 once. On a real push/tag (never on pull_request -- fork
-  #  PRs must not get registry credentials) it's pushed BY DIGEST, pulled
-  #  back by that exact digest, and the functional tests run against
-  #  those literal bytes -- not a separately-built image that "should"
-  #  match thanks to cache. `promote` below merges that same digest with
-  #  build-arm64's into the final multi-arch manifest; amd64 never gets
-  #  rebuilt between "tested" and "shipped" (arm64 can't be functionally
-  #  tested here at all -- would need slow, less reliable QEMU-emulated
-  #  containers -- so it's still just built, not tested).
+  #  PRs must not get registry credentials) it's pushed BY DIGEST, so
+  #  `test` below can pull back that exact digest and run the functional
+  #  tests against those literal bytes -- not a separately-built image
+  #  that "should" match thanks to cache. `promote` merges that same
+  #  digest with build-arm64's into the final multi-arch manifest; amd64
+  #  never gets rebuilt between "tested" and "shipped" (arm64 can't be
+  #  functionally tested here at all -- would need slow, less reliable
+  #  QEMU-emulated containers -- so it's still just built, not tested). On
+  #  a PR there's no registry to push to, so the image is instead
+  #  exported to a local tarball and handed to `test` (a separate
+  #  job/runner) as an artifact.
   # -------------------------------------------------------------------
-  test:
-    name: Functional tests
+  build:
+    name: Build image
     needs: lint
     runs-on: ubuntu-latest
     outputs:
@@ -88,31 +91,83 @@ jobs:
       # = ghcr.io, used throughout for GHCR references), which collides:
       # compose picks it up too and resolves to ghcr.io/docker/php:latest,
       # not this repo's actual image name. Ask compose itself what it
-      # expects rather than hardcoding a guess.
+      # expects rather than hardcoding a guess. Deterministic/local (just
+      # reads docker-compose.yml + env), so `test` below recomputes the
+      # same value independently rather than needing it passed as an
+      # output.
       - name: Resolve compose's expected local tag
         id: compose-image
         run: echo "tag=$(docker compose config --images php-fpm)" >> "$GITHUB_OUTPUT"
 
-      - name: Build (load or push-by-digest)
+      - name: Make room for local tarball export (PR only)
+        if: env.PUBLISH != 'true'
+        run: mkdir -p /tmp/image-tar
+
+      - name: Build (push-by-digest, or local tarball on PR)
         id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
-          load: ${{ env.PUBLISH != 'true' }}
-          outputs: ${{ env.PUBLISH == 'true' && format('type=image,name={0}/{1}/{2},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.NAMESPACE, env.IMAGE_NAME) || '' }}
+          outputs: ${{ env.PUBLISH == 'true' && format('type=image,name={0}/{1}/{2},push-by-digest=true,name-canonical=true,push=true', env.REGISTRY, env.NAMESPACE, env.IMAGE_NAME) || 'type=docker,dest=/tmp/image-tar/image.tar' }}
           tags: ${{ env.PUBLISH != 'true' && steps.compose-image.outputs.tag || '' }}
           sbom: ${{ env.PUBLISH }}
           provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
           cache-from: type=gha,scope=php-fpm-linux/amd64
           cache-to: type=gha,mode=max,scope=php-fpm-linux/amd64
 
-      - name: Pull back pushed digest for testing
+      - name: Upload image tarball (PR only, for the test job)
+        if: env.PUBLISH != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-tar
+          path: /tmp/image-tar/image.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  # -------------------------------------------------------------------
+  #  Loads the exact bytes `build` just produced (pulled by digest from
+  #  the registry, or loaded from its tarball artifact on a PR) and runs
+  #  the functional tests against them.
+  # -------------------------------------------------------------------
+  test:
+    name: Functional tests
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      PUBLISH: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login ghcr.io
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve compose's expected local tag
+        id: compose-image
+        run: echo "tag=$(docker compose config --images php-fpm)" >> "$GITHUB_OUTPUT"
+
+      - name: Pull built digest for testing
         if: env.PUBLISH == 'true'
         run: |
           set -euo pipefail
-          docker pull "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
-          docker tag  "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}" "${{ steps.compose-image.outputs.tag }}"
+          docker pull "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest }}"
+          docker tag  "${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.digest }}" "${{ steps.compose-image.outputs.tag }}"
+
+      - name: Download image tarball (PR only)
+        if: env.PUBLISH != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: image-tar
+          path: /tmp/image-tar
+
+      - name: Load image tarball (PR only)
+        if: env.PUBLISH != 'true'
+        run: docker load -i /tmp/image-tar/image.tar
 
       - name: Build & start stack
         run: docker compose up -d --no-build php-fpm
@@ -182,12 +237,12 @@ jobs:
           cache-to: type=gha,mode=max,scope=php-fpm-linux/arm64
 
   # -------------------------------------------------------------------
-  #  Merges test's tested amd64 digest with build-arm64's digest into the
+  #  Merges build's tested amd64 digest with build-arm64's digest into the
   #  final multi-arch manifest -- no rebuild of either.
   # -------------------------------------------------------------------
-  build:
+  promote:
     name: Promote tested digests
-    needs: [test, build-arm64]
+    needs: [build, test, build-arm64]
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
     outputs:
@@ -267,7 +322,7 @@ jobs:
             [ -n "$tag" ] && TAGS="${TAGS} -t ${tag}"
           done <<< "${{ steps.meta.outputs.tags }}"
           docker buildx imagetools create ${TAGS} \
-            "${IMAGE}@${{ needs.test.outputs.digest }}" \
+            "${IMAGE}@${{ needs.build.outputs.digest }}" \
             "${IMAGE}@${{ needs.build-arm64.outputs.digest }}"
           DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${{ steps.versions.outputs.php }}" --format '{{json .Manifest.Digest}}' | tr -d '"')
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
@@ -329,14 +384,14 @@ jobs:
   # -------------------------------------------------------------------
   cleanup:
     name: Prune old registry tags
-    needs: build
+    needs: promote
     uses: ./.github/workflows/registry-cleanup.yml
     secrets: inherit
 
   # -------------------------------------------------------------------
   release:
     name: GitHub Release
-    needs: build
+    needs: promote
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
