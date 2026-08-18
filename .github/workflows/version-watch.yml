@@ -83,10 +83,24 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Update Dockerfile FROM line (replace php:X.Y.Z-fpm-alpine or php:X.Y-fpm-alpine)
-          sed -i "s|FROM php:${BRANCH}[0-9.]*-fpm-alpine|FROM php:${NEW_VER}-fpm-alpine|" Dockerfile
+          # The FROM line pins a tag AND a digest, and Docker resolves the
+          # digest -- rewriting the tag alone leaves the build on the old
+          # image while the Dockerfile claims the new version. Resolve the
+          # digest of the new tag and rewrite both together.
+          DIGEST=$(curl -fsSL \
+            "https://hub.docker.com/v2/repositories/library/php/tags/${NEW_VER}-fpm-alpine" \
+            | jq -er '.digest')
+          case "$DIGEST" in
+            sha256:*) ;;
+            *) echo "Unexpected digest for php:${NEW_VER}-fpm-alpine: ${DIGEST}" >&2; exit 1 ;;
+          esac
 
-          echo "Updated Dockerfile to php:${NEW_VER}-fpm-alpine"
+          # Update Dockerfile FROM line (replace php:X.Y.Z-fpm-alpine or php:X.Y-fpm-alpine)
+          sed -i -E \
+            "s|FROM php:${BRANCH}[0-9.]*-fpm-alpine(@sha256:[a-f0-9]{64})?|FROM php:${NEW_VER}-fpm-alpine@${DIGEST}|" \
+            Dockerfile
+
+          echo "Updated Dockerfile to php:${NEW_VER}-fpm-alpine@${DIGEST}"
           grep "^FROM php:" Dockerfile
 
       - name: Commit & push
