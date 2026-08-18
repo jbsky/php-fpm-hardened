@@ -1,15 +1,20 @@
-# Faux positif Grype confirme, pas une vulnerabilite reelle. Grype lit la
-# chaine de version embarquee de PHP ("8.5.8") dans le fichier de
-# l'extension PHP `curl.so` (/usr/local/lib/php/extensions/.../curl.so) et
-# l'attribue par erreur a la bibliotheque curl elle-meme -- generant une
-# vingtaine de CVE curl historiques sous "curl 8.5.8". La vraie libcurl
-# runtime (/usr/lib/libcurl.so.4.8.0, ".8.0" est un suffixe ABI/soname, pas
-# la version curl) embarque la chaine "libcurl/8.21.0" -- deja patchee,
-# confirme via `strings` sur l'image publiee. Une seule regle sur le
-# paquet (sans `vulnerability:`) supprime toute la grappe d'un coup, cause
-# racine unique. Devient inerte automatiquement si `curl`/`libcurl` est un
-# jour reellement mis a jour vers une autre version.
+# Faux positif Grype confirme, pas une vulnerabilite reelle. Grype (via
+# syft) catalogue le fichier de l'extension PHP `curl.so`
+# (/usr/local/lib/php/extensions/*/curl.so) comme le paquet `curl`, en
+# prenant la version de PHP ("8.5.9") pour celle de la bibliotheque curl --
+# ce qui fait matcher une vingtaine de CVE curl historiques (jusqu'a
+# Critical) sur une version de curl qui n'a jamais existe. La vraie libcurl
+# du runtime est 8.21.0 : verifie dans l'image publiee avec
+# `php -r 'echo curl_version()["version"];'` (et non par la soname
+# libcurl.so.4.8.0, ou ".8.0" est un suffixe ABI, pas une version).
+#
+# La regle porte sur l'EMPLACEMENT du faux positif, pas sur une version :
+# elle etait pinnee `version: 8.5.8`, et le premier bump reel de PHP
+# (8.5.8 -> 8.5.9, 2026-08-18) a fait ressortir toute la grappe et rougir
+# l'audit. Scoper par chemin la rend stable a travers les bumps tout en
+# laissant remonter un vrai paquet curl s'il etait un jour ajoute a
+# l'image (aucun binaire curl n'y est present aujourd'hui).
 ignore:
   - package:
       name: curl
-      version: 8.5.8
+      location: "/usr/local/lib/php/extensions/*/curl.so"

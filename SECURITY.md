@@ -7,7 +7,7 @@ comes up.
 
 | CVE | Package | Status | Why | Resolves when |
 |---|---|---|---|---|
-| ~20 historical curl CVEs (CVE-2024-2398, CVE-2026-11856, CVE-2026-10536, CVE-2026-8927, etc.) | curl 8.5.8 | Suppressed (`.grype.yaml`) | Grype misreads PHP's own embedded version string (`8.5.8`) inside the `curl.so` PHP extension file (`/usr/local/lib/php/extensions/.../curl.so`) and misattributes it as the curl library's version. The real runtime `libcurl.so.4.8.0` (`.8.0` is an ABI/soname suffix, not the curl version) embeds `libcurl/8.21.0` -- already patched, confirmed via `strings` on the published image. | N/A -- no real vulnerable curl version is shipped. Rule is locked to `curl 8.5.8` and becomes inert automatically if the underlying alpine `libcurl` package or PHP's own version string ever changes such that a genuine match reappears. |
+| ~20 historical curl CVEs (CVE-2024-2398, CVE-2026-11856, CVE-2026-8458, etc.) | `curl` (PHP's `curl.so` extension) | Suppressed (`.grype.yaml`, scoped by file location) | Grype/syft catalogue the PHP extension file `/usr/local/lib/php/extensions/*/curl.so` as the package `curl` and take PHP's own version string for curl's, matching curl CVE ranges against a curl version that never existed. The real runtime libcurl is 8.21.0 -- verified on the published image with `php -r 'echo curl_version()["version"];'`. | N/A -- no vulnerable curl is shipped. The rule used to be pinned to `version: 8.5.8` and went stale the moment PHP really moved to 8.5.9 (2026-08-18), so it is now scoped by file location instead: stable across version bumps, and still lets a genuine `curl` package elsewhere in the image be reported. |
 
 Previously resolved (kept for context):
 
