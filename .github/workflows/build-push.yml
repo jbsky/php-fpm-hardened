@@ -184,6 +184,22 @@ jobs:
           docker compose logs
           exit 1
 
+      # The registry tag (and the release notes) come from the Dockerfile's
+      # FROM tag, while the bytes come from the digest pinned next to it. On
+      # 2026-07-31 those two disagreed for 18 days: version-watch rewrote the
+      # tag to 8.5.9, left the 8.5.8 digest in place, and every build shipped
+      # 8.5.8 under an 8.5.9 tag. Assert on the running image instead.
+      - name: Assert the image is the PHP version we tag it with
+        run: |
+          set -euo pipefail
+          want=$(grep -oP '^FROM php:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1)
+          got=$(docker exec php-fpm-hardened php -r 'echo PHP_VERSION;')
+          echo "Dockerfile tag: ${want} | image: ${got}"
+          if [ "$want" != "$got" ]; then
+            echo "::error::image ships PHP ${got} but would be published as ${want} (FROM tag and @sha256 pin disagree)"
+            exit 1
+          fi
+
       - name: Run smoke tests
         run: ./scripts/test.sh php-fpm-hardened
 
