@@ -4,7 +4,7 @@
 [![Docker Hub](https://img.shields.io/docker/v/jbsky/php-fpm-hardened?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/jbsky/php-fpm-hardened)
 [![Hardening](https://img.shields.io/badge/hardening-platine-blueviolet)](https://github.com/jbsky/php-fpm-hardened#security--verification)
 
-Image Docker PHP-FPM 8.5 hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
+Image Docker PHP-FPM hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
 
 ## Extensions incluses
 
