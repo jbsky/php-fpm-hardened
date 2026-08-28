@@ -7,8 +7,10 @@
 #   - entrypoint + healthcheck en binaire Go statique (FastCGI PING/PONG)
 #   - tini-static PID 1
 #
-#  Extensions: opcache, gd, imagick, mysqli, zip, bz2, intl, exif,
+#  Extensions: opcache, gd, imagick, mysqli, zip, bz2, exif,
 #              bcmath, gmp, sodium, redis, curl
+#
+#  Pas d'intl : voir la note devant docker-php-ext-install.
 #
 #  Proxy-aware: passe http_proxy/https_proxy via les predefined ARGs
 #  BuildKit (non baked dans l'image finale).
@@ -30,7 +32,7 @@ RUN --mount=type=secret,id=ca-certs,target=/tmp/ca-bundle.crt,required=false \
 # Build deps for all extensions
 RUN apk add --no-cache \
     autoconf automake build-base curl-dev freetype-dev g++ gcc \
-    gmp-dev icu-dev imagemagick-dev libjpeg-turbo-dev libpng-dev \
+    gmp-dev imagemagick-dev libjpeg-turbo-dev libpng-dev \
     libwebp-dev libxml2-dev libzip-dev linux-headers lmdb-dev \
     make oniguruma-dev pcre2-dev zlib-dev bzip2-dev git
 
@@ -39,7 +41,17 @@ ENV CFLAGS="-O2 -fstack-protector-strong -fstack-clash-protection -fPIC -D_FORTI
     CXXFLAGS="-O2 -fstack-protector-strong -fstack-clash-protection -fPIC -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security" \
     LDFLAGS="-Wl,-z,relro,-z,now,-z,noexecstack"
 
-# Configure + compile GD with full format support
+# Configure + compile GD with full format support.
+#
+# intl est volontairement absent de la liste. L'image l'a embarquee jusqu'en
+# aout 2026 sans qu'elle fonctionne : sur Alpine les donnees ICU ne sont pas
+# dans libicudata.so (un stub de 9 Ko) mais dans /usr/share/icu/<v>/icudt<v>l.dat,
+# un fichier de DONNEES qu'aucune cloture de dependances ne peut voir. Il n'etait
+# donc pas copie, et Collator comme IntlDateFormatter mouraient en 255. Le
+# reparer coutait 31,6 Mo de donnees ICU pour du francais correct ; retirer
+# l'extension enleve au contraire 4,6 Mo de bibliotheques ICU et 2,8 Mo de
+# libstdc++, dont ICU etait le seul consommateur ici. Si un jour du code du site
+# appelle intl, c'est un choix a refaire -- pas un oubli.
 RUN docker-php-ext-configure gd \
       --with-freetype \
       --with-jpeg \
@@ -51,7 +63,6 @@ RUN docker-php-ext-configure gd \
       exif \
       gd \
       gmp \
-      intl \
       mysqli \
       zip
 
@@ -102,9 +113,9 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 # instruction text was built (apk packages get security updates within a
 # stable Alpine branch even though the base image digest doesn't change).
 RUN apk add --no-cache \
-    argon2-libs ca-certificates freetype gmp gnu-libiconv icu-libs \
+    argon2-libs ca-certificates freetype gmp gnu-libiconv \
     imagemagick-libs libbz2 libcurl libgcc libjpeg-turbo libpng \
-    libsodium libstdc++ libwebp libxml2 libzip oniguruma pcre2 \
+    libsodium libwebp libxml2 libzip oniguruma pcre2 \
     readline sqlite-libs tini-static tzdata zlib
 
 # Create non-root user
@@ -150,16 +161,26 @@ RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
 # The PHP extensions are dlopen'd, so they are closure roots, enumerated with
 # find rather than a glob: busybox sh hands an unmatched glob through
 # literally. The build stops if that enumeration is empty.
+#
+# The "Not found" guard is not decoration: lddtree reports a missing library on
+# stderr and still EXITS 0, so without it a dropped runtime package ships a
+# closure with a hole in it and the failure only surfaces at container start.
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add --no-cache lddtree \
  && mkdir -p /rootfs \
  && test -n "$(find /usr/local/lib/php/extensions -name '*.so' -print -quit)" \
  && { lddtree -l /usr/local/bin/php /usr/local/sbin/php-fpm; \
-      find /usr/local/lib/php/extensions -name '*.so' -exec lddtree -l {} +; } > /tmp/closure.list \
+      find /usr/local/lib/php/extensions -name '*.so' -exec lddtree -l {} +; } \
+      > /tmp/closure.list 2> /tmp/closure.err \
+ && if grep -q 'Not found' /tmp/closure.list /tmp/closure.err; then \
+      echo "closure incomplete -- a dependency is missing from this stage:" >&2; \
+      grep 'Not found' /tmp/closure.list /tmp/closure.err >&2; \
+      exit 1; \
+    fi \
  && sort -u /tmp/closure.list -o /tmp/closure.list \
  && tar -cf /tmp/closure.tar -T /tmp/closure.list \
  && tar -xf /tmp/closure.tar -C /rootfs \
- && rm -f /tmp/closure.list /tmp/closure.tar
+ && rm -f /tmp/closure.list /tmp/closure.err /tmp/closure.tar
 
 # OpenSSL providers are dlopen'd, so no closure lists them. The 1.x engines
 # (engines-3/) are deprecated and unused, as are the GObject introspection
