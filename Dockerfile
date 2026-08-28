@@ -141,6 +141,32 @@ RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
  && rm -f /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini-production
 
 # Strip APK/package-manager artifacts
+# Collect exactly the shared objects that ship. Copying /lib and /usr/lib whole
+# defeats the apk cleanup just below: it carried libapk.so along with it.
+# lddtree lists each binary, its transitive dependencies, symlinks with their
+# targets, and the loader for the architecture being built. It runs before apk
+# is removed, since it needs apk to install itself.
+#
+# The PHP extensions are dlopen'd, so they are closure roots, enumerated with
+# find rather than a glob: busybox sh hands an unmatched glob through
+# literally. The build stops if that enumeration is empty.
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache lddtree \
+ && mkdir -p /rootfs \
+ && test -n "$(find /usr/local/lib/php/extensions -name '*.so' -print -quit)" \
+ && { lddtree -l /usr/local/bin/php /usr/local/sbin/php-fpm; \
+      find /usr/local/lib/php/extensions -name '*.so' -exec lddtree -l {} +; } > /tmp/closure.list \
+ && sort -u /tmp/closure.list -o /tmp/closure.list \
+ && tar -cf /tmp/closure.tar -T /tmp/closure.list \
+ && tar -xf /tmp/closure.tar -C /rootfs \
+ && rm -f /tmp/closure.list /tmp/closure.tar
+
+# OpenSSL providers are dlopen'd, so no closure lists them. The 1.x engines
+# (engines-3/) are deprecated and unused, as are the GObject introspection
+# directories a dependency dragged in.
+RUN mkdir -p /rootfs/usr/lib \
+ && cp -a /usr/lib/ossl-modules /rootfs/usr/lib/
+
 RUN rm -rf /lib/apk /lib/libapk* /var/cache/apk /etc/apk /sbin/apk
 
 # ---------------------------------------------------------------------------
@@ -161,8 +187,7 @@ COPY --link --from=prep /etc/passwd /etc/passwd
 COPY --link --from=prep /etc/group  /etc/group
 
 # Dynamic linker (musl) + shared libraries
-COPY --link --from=prep /lib/ /lib/
-COPY --link --from=prep /usr/lib/ /usr/lib/
+COPY --link --from=prep /rootfs/ /
 
 # PHP binaries
 COPY --link --from=prep /usr/local/bin/php /usr/local/bin/php
