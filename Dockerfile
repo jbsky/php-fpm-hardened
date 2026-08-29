@@ -122,8 +122,10 @@ RUN apk add --no-cache \
 RUN addgroup -g 1999 -S phpfpm \
  && adduser -S -D -H -u 1999 -h /var/www/html -s /sbin/nologin -G phpfpm phpfpm
 
-# Copy PHP binaries from builder
-COPY --from=builder /usr/local/bin/php /usr/local/bin/php
+# Copy PHP binary from builder
+# Le CLI /usr/local/bin/php n'est PAS embarque : 28,8 Mo pour un binaire que
+# le service n'invoque jamais. php-fpm couvre -m, -v, -i et -d ; seul -r est
+# propre au CLI, aucun usage de l'image n'en depend.
 COPY --from=builder /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
 
 # Copy extensions + extension configs
@@ -169,7 +171,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
     apk add --no-cache lddtree \
  && mkdir -p /rootfs \
  && test -n "$(find /usr/local/lib/php/extensions -name '*.so' -print -quit)" \
- && { lddtree -l /usr/local/bin/php /usr/local/sbin/php-fpm; \
+ && { lddtree -l /usr/local/sbin/php-fpm; \
       find /usr/local/lib/php/extensions -name '*.so' -exec lddtree -l {} +; } \
       > /tmp/closure.list 2> /tmp/closure.err \
  && if grep -q 'Not found' /tmp/closure.list /tmp/closure.err; then \
@@ -210,8 +212,7 @@ COPY --link --from=prep /etc/group  /etc/group
 # Dynamic linker (musl) + shared libraries
 COPY --link --from=prep /rootfs/ /
 
-# PHP binaries
-COPY --link --from=prep /usr/local/bin/php /usr/local/bin/php
+# PHP binary (php-fpm seul, voir la note du stage prep)
 COPY --link --from=prep /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
 
 # PHP shared libraries (if any libphp*)

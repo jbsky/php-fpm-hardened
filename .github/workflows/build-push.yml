@@ -197,7 +197,9 @@ jobs:
         run: |
           set -euo pipefail
           want=$(grep -oP '^FROM php:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile | head -1)
-          got=$(docker exec php-fpm-hardened php -r 'echo PHP_VERSION;')
+          # php-fpm, pas le CLI : celui-ci n'est plus embarque (28,8 Mo inutiles).
+          # `php-fpm -v` -> "PHP 8.5.9 (fpm-fcgi) (built: ...)"
+          got=$(docker exec php-fpm-hardened php-fpm -v 2>/dev/null | head -1 | awk '{print $2}')
           echo "Dockerfile tag: ${want} | image: ${got}"
           if [ "$want" != "$got" ]; then
             echo "::error::image ships PHP ${got} but would be published as ${want} (FROM tag and @sha256 pin disagree)"
