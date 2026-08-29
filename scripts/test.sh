@@ -36,7 +36,11 @@ check "FPM ping/pong (init --healthcheck)" \
   "pong"
 
 # Required extensions for WordPress
-for ext in gd imagick mysqli zip bz2 intl exif bcmath gmp redis curl sodium; do
+# intl a ete retire de l'image (a77c002) : ICU pese 8 Mo pour une extension que
+# WordPress n'utilise pas. Cette liste doit suivre le Dockerfile, sinon le test
+# recale une image correcte -- ce qui est arrive le 2026-08-28 et a empeche la
+# publication du retrait pendant que l'image continuait a embarquer ICU.
+for ext in gd imagick mysqli zip bz2 exif bcmath gmp redis curl sodium; do
   check "Extension: ${ext}" \
     "docker exec ${CONTAINER} php -m 2>/dev/null" \
     "${ext}"
