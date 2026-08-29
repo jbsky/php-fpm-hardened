@@ -13,6 +13,10 @@ on:
       - 'Dockerfile'
       - 'conf/**'
       - 'scripts/entrypoint.sh'
+      # test.sh conditionne la promotion des digests : une image correcte peut
+      # etre recalee par une assertion perimee (arrive le 2026-08-28 avec intl).
+      # Sans ce chemin, corriger le test ne revalidait rien.
+      - 'scripts/test.sh'
       - '.github/workflows/build-push.yml'
   pull_request:
     branches: [main]
