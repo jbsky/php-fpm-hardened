@@ -7,10 +7,8 @@
 #   - entrypoint + healthcheck en binaire Go statique (FastCGI PING/PONG)
 #   - tini-static PID 1
 #
-#  Extensions: opcache, gd, imagick, mysqli, zip, bz2, exif,
+#  Extensions: opcache, gd, imagick, intl, mysqli, zip, bz2, exif,
 #              bcmath, gmp, sodium, redis, curl
-#
-#  Pas d'intl : voir la note devant docker-php-ext-install.
 #
 #  Proxy-aware: passe http_proxy/https_proxy via les predefined ARGs
 #  BuildKit (non baked dans l'image finale).
@@ -32,7 +30,7 @@ RUN --mount=type=secret,id=ca-certs,target=/tmp/ca-bundle.crt,required=false \
 # Build deps for all extensions
 RUN apk add --no-cache \
     autoconf automake build-base curl-dev freetype-dev g++ gcc \
-    gmp-dev imagemagick-dev libjpeg-turbo-dev libpng-dev \
+    gmp-dev icu-dev imagemagick-dev libjpeg-turbo-dev libpng-dev \
     libwebp-dev libxml2-dev libzip-dev linux-headers lmdb-dev \
     make oniguruma-dev pcre2-dev zlib-dev bzip2-dev git
 
@@ -43,15 +41,24 @@ ENV CFLAGS="-O2 -fstack-protector-strong -fstack-clash-protection -fPIC -D_FORTI
 
 # Configure + compile GD with full format support.
 #
-# intl est volontairement absent de la liste. L'image l'a embarquee jusqu'en
-# aout 2026 sans qu'elle fonctionne : sur Alpine les donnees ICU ne sont pas
-# dans libicudata.so (un stub de 9 Ko) mais dans /usr/share/icu/<v>/icudt<v>l.dat,
-# un fichier de DONNEES qu'aucune cloture de dependances ne peut voir. Il n'etait
-# donc pas copie, et Collator comme IntlDateFormatter mouraient en 255. Le
-# reparer coutait 31,6 Mo de donnees ICU pour du francais correct ; retirer
-# l'extension enleve au contraire 4,6 Mo de bibliotheques ICU et 2,8 Mo de
-# libstdc++, dont ICU etait le seul consommateur ici. Si un jour du code du site
-# appelle intl, c'est un choix a refaire -- pas un oubli.
+# intl est de retour (30/08/2026) : WordPress la liste dans les modules
+# recommandes de Site Health (WP_Site_Health::get_test_php_extensions), et la
+# consigne est de suivre ces recommandations. Cout mesure : ~10 Mo (4,6 Mo de
+# bibliotheques ICU, 2,8 Mo de libstdc++ dont ICU est le seul consommateur,
+# 2,9 Mo de donnees).
+#
+# Le piege qui l'avait fait retirer en aout reste entier : sur Alpine les
+# donnees ICU ne sont pas dans libicudata.so (un stub de 12 Ko) mais dans
+# /usr/share/icu/<v>/icudt<v>l.dat, un fichier de DONNEES qu'aucune cloture de
+# dependances ne voit. Il est donc copie explicitement dans le stage prep.
+#
+# Donnees : icu-data-en (2,9 Mo), tire par icu-libs. icu-data-full coute
+# 31,6 Mo et n'ajoute que les locales non anglaises d'ICU -- WordPress traduit
+# ses dates avec ses propres catalogues (wp_date), pas avec ICU, et la
+# collation d'un fr_FR reste correcte sans elles (mesure : abricot, eclair,
+# eclair accentue, zebre). A rebasculer sur icu-data-full le jour ou du code
+# appelle IntlDateFormatter en fr_FR : sans les donnees pleines, il rend
+# "Sunday, August 30, 2026" au lieu de "dimanche 30 aout 2026".
 RUN docker-php-ext-configure gd \
       --with-freetype \
       --with-jpeg \
@@ -63,6 +70,7 @@ RUN docker-php-ext-configure gd \
       exif \
       gd \
       gmp \
+      intl \
       mysqli \
       zip
 
@@ -113,7 +121,7 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 # instruction text was built (apk packages get security updates within a
 # stable Alpine branch even though the base image digest doesn't change).
 RUN apk add --no-cache \
-    argon2-libs ca-certificates freetype gmp gnu-libiconv \
+    argon2-libs ca-certificates freetype gmp gnu-libiconv icu-libs \
     imagemagick-libs libbz2 libcurl libgcc libjpeg-turbo libpng \
     libsodium libwebp libxml2 libzip oniguruma pcre2 \
     readline sqlite-libs tini-static tzdata zlib
@@ -189,6 +197,16 @@ RUN --mount=type=cache,target=/var/cache/apk \
 # directories a dependency dragged in.
 RUN mkdir -p /rootfs/usr/lib \
  && cp -a /usr/lib/ossl-modules /rootfs/usr/lib/
+
+# Meme angle mort, pour une autre raison : les donnees ICU sont un fichier de
+# DONNEES (/usr/share/icu/<v>/icudt<v>l.dat), pas une bibliotheque. Aucune
+# cloture ne le liste, et son absence ne se voit pas a l'inspection --
+# `php-fpm -i` affiche "ICU Data version" meme quand le fichier a ete supprime
+# (verifie), c'est le premier Collator qui meurt en 255. D'ou la copie
+# explicite et le test fonctionnel de scripts/test.sh.
+RUN mkdir -p /rootfs/usr/share \
+ && cp -a /usr/share/icu /rootfs/usr/share/ \
+ && test -s "$(find /rootfs/usr/share/icu -name 'icudt*.dat' -print -quit)"
 
 RUN rm -rf /lib/apk /lib/libapk* /var/cache/apk /etc/apk /sbin/apk
 
