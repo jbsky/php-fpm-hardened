@@ -14,23 +14,40 @@ FAIL=0
 
 # Executer du PHP dans l'image sans CLI : on parle FastCGI, exactement comme
 # nginx en production. `docker cp` n'a besoin d'aucun shell dans le conteneur
-# (l'image est FROM scratch), et le client cgi-fcgi vit dans un conteneur
-# jetable qui partage la pile reseau du conteneur teste. C'est le seul moyen
+# (l'image est FROM scratch) et scripts/fcgi-request.py n'a besoin de rien
+# d'autre que la bibliotheque standard de Python -- ni paquet a installer sur
+# l'hote, ni conteneur jetable a tirer d'un registre. C'est le seul moyen
 # d'obtenir une assertion FONCTIONNELLE : `php-fpm -m` et `php-fpm -i` se
 # contentent de ce que l'extension declare, pas de ce qu'elle sait faire.
+FCGI_CLIENT="$(dirname "$0")/fcgi-request.py"
+
+# Chaque appel ecrit un fichier au nom UNIQUE. Reutiliser le meme chemin fait
+# servir le code du test precedent : opcache tourne avec revalidate_freq=60,
+# donc une fois le script mis en cache, son contenu n'est plus relu pendant
+# une minute. Le piege est intermittent, ce qui le rend pire : les fichiers
+# ecrits depuis moins de opcache.file_update_protection secondes (2 par
+# defaut) ne sont PAS mis en cache, si bien qu'un harnais rapide passe et
+# qu'un harnais lent echoue. C'est exactement ce qui est arrive le 30/08 --
+# vert en local, rouge en CI, sur une image ou intl fonctionnait : les deux
+# assertions intl recevaient la sortie du test de plomberie qui les precedait.
+# Verifie en reproduisant les deux cas (fichier ante-date -> code perime).
 fcgi_eval() {
-  local code="$1" tmp
+  local code="$1" tmp ip name
+  name="__smoke-$$-${RANDOM}.php"
   tmp=$(mktemp -d)
-  printf '<?php %s' "${code}" > "${tmp}/__smoke.php"
-  if ! docker cp "${tmp}/__smoke.php" "${CONTAINER}:/var/www/html/__smoke.php" >/dev/null 2>&1; then
+  printf '<?php %s' "${code}" > "${tmp}/${name}"
+  if ! docker cp "${tmp}/${name}" "${CONTAINER}:/var/www/html/${name}" >/dev/null 2>&1; then
     rm -rf "${tmp}"
     echo "__FAIL__ docker cp"
     return 0
   fi
-  docker run --rm --network "container:${CONTAINER}" alpine:3.24 sh -c \
-    'apk add --no-cache fcgi >/dev/null 2>&1; \
-     SCRIPT_FILENAME=/var/www/html/__smoke.php REQUEST_METHOD=GET \
-     cgi-fcgi -bind -connect 127.0.0.1:9000' 2>/dev/null
+  ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "${CONTAINER}" 2>/dev/null)
+  if [ -z "$ip" ]; then
+    rm -rf "${tmp}"
+    echo "__FAIL__ pas d'IP pour ${CONTAINER}"
+    return 0
+  fi
+  python3 "${FCGI_CLIENT}" "${ip}" 9000 "/var/www/html/${name}" 2>&1
   rm -rf "${tmp}"
 }
 
