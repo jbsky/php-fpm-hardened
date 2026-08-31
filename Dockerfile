@@ -175,6 +175,16 @@ RUN rm -f /usr/local/etc/php-fpm.d/zz-docker.conf \
 # The "Not found" guard is not decoration: lddtree reports a missing library on
 # stderr and still EXITS 0, so without it a dropped runtime package ships a
 # closure with a hole in it and the failure only surfaces at container start.
+#
+# lddtree prints each binary it is handed, so this list holds the roots as well
+# as their dependencies -- and every one of those roots is copied again, on its
+# own COPY line, in the final stage. Layers are not deduplicated, so php-fpm and the PHP extensions was
+# going out twice: 31,8 Mo of this image. The roots keep their individual COPY
+# and are filtered out of the tar input here; what this archive carries is the
+# dependencies and the loader.
+#
+# The completeness check runs on the UNFILTERED list, above: a filter must
+# never be able to hide a missing dependency.
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add --no-cache lddtree \
  && mkdir -p /rootfs \
@@ -188,9 +198,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
       exit 1; \
     fi \
  && sort -u /tmp/closure.list -o /tmp/closure.list \
- && tar -cf /tmp/closure.tar -T /tmp/closure.list \
+ && grep -v -E '^/usr/local/' /tmp/closure.list > /tmp/closure.deps \
+ && tar -cf /tmp/closure.tar -T /tmp/closure.deps \
  && tar -xf /tmp/closure.tar -C /rootfs \
- && rm -f /tmp/closure.list /tmp/closure.err /tmp/closure.tar
+ && rm -f /tmp/closure.list /tmp/closure.deps /tmp/closure.err /tmp/closure.tar
 
 # OpenSSL providers are dlopen'd, so no closure lists them. The 1.x engines
 # (engines-3/) are deprecated and unused, as are the GObject introspection
