@@ -49,7 +49,7 @@ inaccessible. **En production, epinglez le tag qui porte le compteur.**
 <!-- BEGIN:tags (genere par la CI -- ne pas editer a la main) -->
 | Image | Version amont | Tag immuable a epingler |
 |-------|---------------|-------------------------|
-| `jbsky/php-fpm-hardened` | `8.5.9` | `8.5.9.5` |
+| `jbsky/php-fpm-hardened` | `8.5.10` | `8.5.10.1` |
 <!-- END:tags -->
 
 Le compteur compte les commits qui touchent les inputs de l'image (`Dockerfile`, `conf/`, `scripts/entrypoint.sh`)
