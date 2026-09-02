@@ -4,7 +4,7 @@
 [![Docker Hub](https://img.shields.io/docker/v/jbsky/php-fpm-hardened?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/jbsky/php-fpm-hardened)
 [![Hardening](https://img.shields.io/badge/hardening-platine-blueviolet)](https://github.com/jbsky/php-fpm-hardened#security--verification)
 
-Image Docker PHP-FPM 8.5 hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
+Image Docker PHP-FPM <!--v:php-fpm-hardened-->8.5.10<!--/v--> hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
 
 ## Extensions incluses
 
@@ -51,6 +51,10 @@ inaccessible. **En production, epinglez le tag qui porte le compteur.**
 |-------|---------------|-------------------------|
 | `jbsky/php-fpm-hardened` | `8.5.10` | `8.5.10.1` |
 <!-- END:tags -->
+
+Ce tableau, les versions citees dans le texte et les tags qui apparaissent
+dans les exemples sont tous rendus par `scripts/update-readme-tags.sh` apres
+chaque publication -- ne rien editer a la main.
 
 Le compteur compte les commits qui touchent les inputs de l'image (`Dockerfile`, `conf/`, `scripts/entrypoint.sh`)
 depuis le dernier changement de version amont, et repart a `0` a chaque nouvelle
