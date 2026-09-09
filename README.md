@@ -169,4 +169,13 @@ COSIGN_REPOSITORY=ghcr.io/jbsky/php-fpm-hardened \
 
 ## License
 
-MIT
+Le contenu de ce depot -- Dockerfile, `init.go`, scripts et chaine CI -- est
+sous **Apache-2.0**, voir [`LICENSE`](LICENSE). Copyright 2026 jbsky.
+
+Le logiciel embarque dans l'image garde la sienne : le moteur PHP et les
+extensions compilees restent sous la licence de leur amont. Les deux plans ne
+se melangent pas -- `init.go` est un programme distinct, qui execute php-fpm
+sans etre lie a ses bibliotheques.
+
+Contributions : voir [`CONTRIBUTING.md`](CONTRIBUTING.md), un `Signed-off-by`
+est demande.
