@@ -1,5 +1,5 @@
 # image-manifest v1
-# image : jbsky/php-fpm-hardened:latest
+# image : php-fpm-hardened
 # genere par scripts/image-manifest.py -- ne pas editer a la main
 
 f 0644 0:0 - etc/group
@@ -38,8 +38,8 @@ f 0755 0:0 elf usr/lib/libcares.so.2.19.7
 f 0755 0:0 elf usr/lib/libcrypto.so.3
 l usr/lib/libcurl.so.4 -> libcurl.so.4.8.0
 f 0755 0:0 elf usr/lib/libcurl.so.4.8.0
-l usr/lib/libexpat.so.1 -> libexpat.so.1.12.3
-f 0755 0:0 elf usr/lib/libexpat.so.1.12.3
+l usr/lib/libexpat.so.1 -> libexpat.so.1.12.4
+f 0755 0:0 elf usr/lib/libexpat.so.1.12.4
 l usr/lib/libfftw3.so.3 -> libfftw3.so.3.7.11
 f 0755 0:0 elf usr/lib/libfftw3.so.3.7.11
 l usr/lib/libfontconfig.so.1 -> libfontconfig.so.1.16.1
@@ -89,8 +89,8 @@ l usr/lib/libnghttp2.so.14 -> libnghttp2.so.14.29.4
 f 0755 0:0 elf usr/lib/libnghttp2.so.14.29.4
 l usr/lib/libonig.so.5 -> libonig.so.5.5.0
 f 0755 0:0 elf usr/lib/libonig.so.5.5.0
-l usr/lib/libpcre2-8.so.0 -> libpcre2-8.so.0.15.0
-f 0755 0:0 elf usr/lib/libpcre2-8.so.0.15.0
+l usr/lib/libpcre2-8.so.0 -> libpcre2-8.so.0.16.0
+f 0755 0:0 elf usr/lib/libpcre2-8.so.0.16.0
 l usr/lib/libpng16.so.16 -> libpng16.so.16.58.0
 f 0755 0:0 elf usr/lib/libpng16.so.16.58.0
 l usr/lib/libpsl.so.5 -> libpsl.so.5.3.5

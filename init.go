@@ -295,7 +295,7 @@ func entrypoint() error {
 	}
 
 	// WP_DEBUG mode (opt-in via WP_DEBUG=1)
-	if os.Getenv("WP_DEBUG") == "1" {
+	if env("WP_DEBUG", "0") == "1" {
 		content := "display_errors = On\n" +
 			"display_startup_errors = On\n" +
 			"error_reporting = E_ALL\n" +
@@ -358,25 +358,38 @@ func execCmd(args []string) error {
 	return syscall.Exec(bin, args, os.Environ())
 }
 
+// env lit une variable d'environnement en rendant sa valeur par defaut
+// explicite plutot que sous-entendue par un `!= ""`.
+func env(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// writeOK dit si un repertoire accepte reellement une ecriture. mkdir + chmod
+// + chown peuvent tous reussir sur un point de montage en lecture seule :
+// seule une ecriture le prouve.
+func writeOK(dir string) bool {
+	tmp, err := os.CreateTemp(dir, ".write-test-*")
+	if err != nil {
+		return false
+	}
+	name := tmp.Name()
+	tmp.Close()
+	os.Remove(name)
+	return true
+}
+
 func ensureWritable(path string, uid, gid int) error {
 	if !exists(path) {
 		return nil
 	}
-	tmp, err := os.CreateTemp(path, ".write-test-*")
-	if err == nil {
-		name := tmp.Name()
-		tmp.Close()
-		os.Remove(name)
+	if writeOK(path) {
 		return nil
 	}
-	if chErr := chownRecursive(path, uid, gid); chErr == nil {
-		tmp2, err2 := os.CreateTemp(path, ".write-test-*")
-		if err2 == nil {
-			name := tmp2.Name()
-			tmp2.Close()
-			os.Remove(name)
-			return nil
-		}
+	if chErr := chownRecursive(path, uid, gid); chErr == nil && writeOK(path) {
+		return nil
 	}
 	return fmt.Errorf("%s is not writable by uid %d", path, os.Getuid())
 }

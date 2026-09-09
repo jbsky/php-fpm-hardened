@@ -27,3 +27,4 @@ docker-compose.override.yml
 
 # WordPress core tarballs pulled down for manual local testing
 *.tar.gz
+php-init
