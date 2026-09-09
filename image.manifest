@@ -1,5 +1,5 @@
-# image-manifest v1
-# image : jbsky/php-fpm-hardened:latest
+# image-manifest v2
+# image : php-fpm-hardened
 # genere par scripts/image-manifest.py -- ne pas editer a la main
 
 f 0644 0:0 - etc/group
@@ -12,116 +12,116 @@ f 0644 0:0 - etc/ssl/openssl.cnf.dist
 f 0755 0:0 elf lib/ld-musl-x86_64.so.1
 l lib/libc.musl-x86_64.so.1 -> ld-musl-x86_64.so.1
 f 0755 0:0 elf sbin/tini
-l usr/lib/libMagickCore-7.Q16HDRI.so.10 -> libMagickCore-7.Q16HDRI.so.10.0.3
-f 0755 0:0 elf usr/lib/libMagickCore-7.Q16HDRI.so.10.0.3
-l usr/lib/libMagickWand-7.Q16HDRI.so.10 -> libMagickWand-7.Q16HDRI.so.10.0.3
-f 0755 0:0 elf usr/lib/libMagickWand-7.Q16HDRI.so.10.0.3
-l usr/lib/libX11.so.6 -> libX11.so.6.4.0
-f 0755 0:0 elf usr/lib/libX11.so.6.4.0
-l usr/lib/libXau.so.6 -> libXau.so.6.0.0
-f 0755 0:0 elf usr/lib/libXau.so.6.0.0
-l usr/lib/libXdmcp.so.6 -> libXdmcp.so.6.0.0
-f 0755 0:0 elf usr/lib/libXdmcp.so.6.0.0
-l usr/lib/libXext.so.6 -> libXext.so.6.4.0
-f 0755 0:0 elf usr/lib/libXext.so.6.4.0
+l usr/lib/libMagickCore-7.Q16HDRI.so.10 -> libMagickCore-7.Q16HDRI.so.10.<version>
+f 0755 0:0 elf usr/lib/libMagickCore-7.Q16HDRI.so.10.<version>
+l usr/lib/libMagickWand-7.Q16HDRI.so.10 -> libMagickWand-7.Q16HDRI.so.10.<version>
+f 0755 0:0 elf usr/lib/libMagickWand-7.Q16HDRI.so.10.<version>
+l usr/lib/libX11.so.6 -> libX11.so.6.<version>
+f 0755 0:0 elf usr/lib/libX11.so.6.<version>
+l usr/lib/libXau.so.6 -> libXau.so.6.<version>
+f 0755 0:0 elf usr/lib/libXau.so.6.<version>
+l usr/lib/libXdmcp.so.6 -> libXdmcp.so.6.<version>
+f 0755 0:0 elf usr/lib/libXdmcp.so.6.<version>
+l usr/lib/libXext.so.6 -> libXext.so.6.<version>
+f 0755 0:0 elf usr/lib/libXext.so.6.<version>
 f 0644 0:0 elf usr/lib/libargon2.so.1
-l usr/lib/libbrotlicommon.so.1 -> libbrotlicommon.so.1.2.0
-f 0755 0:0 elf usr/lib/libbrotlicommon.so.1.2.0
-l usr/lib/libbrotlidec.so.1 -> libbrotlidec.so.1.2.0
-f 0755 0:0 elf usr/lib/libbrotlidec.so.1.2.0
-l usr/lib/libbsd.so.0 -> libbsd.so.0.12.2
-f 0755 0:0 elf usr/lib/libbsd.so.0.12.2
-l usr/lib/libbz2.so.1 -> libbz2.so.1.0.8
-f 0755 0:0 elf usr/lib/libbz2.so.1.0.8
-l usr/lib/libcares.so.2 -> libcares.so.2.19.7
-f 0755 0:0 elf usr/lib/libcares.so.2.19.7
+l usr/lib/libbrotlicommon.so.1 -> libbrotlicommon.so.1.<version>
+f 0755 0:0 elf usr/lib/libbrotlicommon.so.1.<version>
+l usr/lib/libbrotlidec.so.1 -> libbrotlidec.so.1.<version>
+f 0755 0:0 elf usr/lib/libbrotlidec.so.1.<version>
+l usr/lib/libbsd.so.0 -> libbsd.so.0.<version>
+f 0755 0:0 elf usr/lib/libbsd.so.0.<version>
+l usr/lib/libbz2.so.1 -> libbz2.so.1.<version>
+f 0755 0:0 elf usr/lib/libbz2.so.1.<version>
+l usr/lib/libcares.so.2 -> libcares.so.2.<version>
+f 0755 0:0 elf usr/lib/libcares.so.2.<version>
 f 0755 0:0 elf usr/lib/libcrypto.so.3
-l usr/lib/libcurl.so.4 -> libcurl.so.4.8.0
-f 0755 0:0 elf usr/lib/libcurl.so.4.8.0
-l usr/lib/libexpat.so.1 -> libexpat.so.1.12.3
-f 0755 0:0 elf usr/lib/libexpat.so.1.12.3
-l usr/lib/libfftw3.so.3 -> libfftw3.so.3.7.11
-f 0755 0:0 elf usr/lib/libfftw3.so.3.7.11
-l usr/lib/libfontconfig.so.1 -> libfontconfig.so.1.16.1
-f 0755 0:0 elf usr/lib/libfontconfig.so.1.16.1
-l usr/lib/libfreetype.so.6 -> libfreetype.so.6.20.6
-f 0755 0:0 elf usr/lib/libfreetype.so.6.20.6
-l usr/lib/libfribidi.so.0 -> libfribidi.so.0.4.0
-f 0755 0:0 elf usr/lib/libfribidi.so.0.4.0
+l usr/lib/libcurl.so.4 -> libcurl.so.4.<version>
+f 0755 0:0 elf usr/lib/libcurl.so.4.<version>
+l usr/lib/libexpat.so.1 -> libexpat.so.1.<version>
+f 0755 0:0 elf usr/lib/libexpat.so.1.<version>
+l usr/lib/libfftw3.so.3 -> libfftw3.so.3.<version>
+f 0755 0:0 elf usr/lib/libfftw3.so.3.<version>
+l usr/lib/libfontconfig.so.1 -> libfontconfig.so.1.<version>
+f 0755 0:0 elf usr/lib/libfontconfig.so.1.<version>
+l usr/lib/libfreetype.so.6 -> libfreetype.so.6.<version>
+f 0755 0:0 elf usr/lib/libfreetype.so.6.<version>
+l usr/lib/libfribidi.so.0 -> libfribidi.so.0.<version>
+f 0755 0:0 elf usr/lib/libfribidi.so.0.<version>
 f 0644 0:0 elf usr/lib/libgcc_s.so.1
-l usr/lib/libglib-2.0.so.0 -> libglib-2.0.so.0.8800.1
-f 0755 0:0 elf usr/lib/libglib-2.0.so.0.8800.1
-l usr/lib/libgmp.so.10 -> libgmp.so.10.5.0
-f 0755 0:0 elf usr/lib/libgmp.so.10.5.0
-l usr/lib/libgomp.so.1 -> libgomp.so.1.0.0
-f 0755 0:0 elf usr/lib/libgomp.so.1.0.0
-l usr/lib/libgraphite2.so.3 -> libgraphite2.so.3.2.1
-f 0755 0:0 elf usr/lib/libgraphite2.so.3.2.1
-l usr/lib/libharfbuzz.so.0 -> libharfbuzz.so.0.61321.0
-f 0755 0:0 elf usr/lib/libharfbuzz.so.0.61321.0
-l usr/lib/libiconv.so.2 -> libiconv.so.2.7.0
-f 0755 0:0 elf usr/lib/libiconv.so.2.7.0
-l usr/lib/libicudata.so.78 -> libicudata.so.78.1
-f 0755 0:0 elf usr/lib/libicudata.so.78.1
-l usr/lib/libicui18n.so.78 -> libicui18n.so.78.1
-f 0755 0:0 elf usr/lib/libicui18n.so.78.1
-l usr/lib/libicuio.so.78 -> libicuio.so.78.1
-f 0755 0:0 elf usr/lib/libicuio.so.78.1
-l usr/lib/libicuuc.so.78 -> libicuuc.so.78.1
-f 0755 0:0 elf usr/lib/libicuuc.so.78.1
-l usr/lib/libidn2.so.0 -> libidn2.so.0.4.0
-f 0755 0:0 elf usr/lib/libidn2.so.0.4.0
-l usr/lib/libintl.so.8 -> libintl.so.8.4.6
-f 0755 0:0 elf usr/lib/libintl.so.8.4.6
-l usr/lib/libjpeg.so.8 -> libjpeg.so.8.3.2
-f 0755 0:0 elf usr/lib/libjpeg.so.8.3.2
-l usr/lib/liblcms2.so.2 -> liblcms2.so.2.0.19
-f 0755 0:0 elf usr/lib/liblcms2.so.2.0.19
-l usr/lib/libltdl.so.7 -> libltdl.so.7.3.5
-f 0755 0:0 elf usr/lib/libltdl.so.7.3.5
-l usr/lib/liblzma.so.5 -> liblzma.so.5.8.3
-f 0755 0:0 elf usr/lib/liblzma.so.5.8.3
-l usr/lib/libmd.so.0 -> libmd.so.0.2.0
-f 0755 0:0 elf usr/lib/libmd.so.0.2.0
-l usr/lib/libncursesw.so.6 -> libncursesw.so.6.6
-f 0755 0:0 elf usr/lib/libncursesw.so.6.6
-l usr/lib/libnghttp2.so.14 -> libnghttp2.so.14.29.4
-f 0755 0:0 elf usr/lib/libnghttp2.so.14.29.4
-l usr/lib/libonig.so.5 -> libonig.so.5.5.0
-f 0755 0:0 elf usr/lib/libonig.so.5.5.0
-l usr/lib/libpcre2-8.so.0 -> libpcre2-8.so.0.15.0
-f 0755 0:0 elf usr/lib/libpcre2-8.so.0.15.0
-l usr/lib/libpng16.so.16 -> libpng16.so.16.58.0
-f 0755 0:0 elf usr/lib/libpng16.so.16.58.0
-l usr/lib/libpsl.so.5 -> libpsl.so.5.3.5
-f 0755 0:0 elf usr/lib/libpsl.so.5.3.5
-l usr/lib/libraqm.so.0 -> libraqm.so.0.10.2
-f 0755 0:0 elf usr/lib/libraqm.so.0.10.2
-l usr/lib/libreadline.so.8 -> libreadline.so.8.3
-f 0755 0:0 elf usr/lib/libreadline.so.8.3
-l usr/lib/libsharpyuv.so.0 -> libsharpyuv.so.0.1.2
-f 0755 0:0 elf usr/lib/libsharpyuv.so.0.1.2
-l usr/lib/libsodium.so.26 -> libsodium.so.26.4.0
-f 0755 0:0 elf usr/lib/libsodium.so.26.4.0
+l usr/lib/libglib-2.0.so.0 -> libglib-2.0.so.0.<version>
+f 0755 0:0 elf usr/lib/libglib-2.0.so.0.<version>
+l usr/lib/libgmp.so.10 -> libgmp.so.10.<version>
+f 0755 0:0 elf usr/lib/libgmp.so.10.<version>
+l usr/lib/libgomp.so.1 -> libgomp.so.1.<version>
+f 0755 0:0 elf usr/lib/libgomp.so.1.<version>
+l usr/lib/libgraphite2.so.3 -> libgraphite2.so.3.<version>
+f 0755 0:0 elf usr/lib/libgraphite2.so.3.<version>
+l usr/lib/libharfbuzz.so.0 -> libharfbuzz.so.0.<version>
+f 0755 0:0 elf usr/lib/libharfbuzz.so.0.<version>
+l usr/lib/libiconv.so.2 -> libiconv.so.2.<version>
+f 0755 0:0 elf usr/lib/libiconv.so.2.<version>
+l usr/lib/libicudata.so.78 -> libicudata.so.78.<version>
+f 0755 0:0 elf usr/lib/libicudata.so.78.<version>
+l usr/lib/libicui18n.so.78 -> libicui18n.so.78.<version>
+f 0755 0:0 elf usr/lib/libicui18n.so.78.<version>
+l usr/lib/libicuio.so.78 -> libicuio.so.78.<version>
+f 0755 0:0 elf usr/lib/libicuio.so.78.<version>
+l usr/lib/libicuuc.so.78 -> libicuuc.so.78.<version>
+f 0755 0:0 elf usr/lib/libicuuc.so.78.<version>
+l usr/lib/libidn2.so.0 -> libidn2.so.0.<version>
+f 0755 0:0 elf usr/lib/libidn2.so.0.<version>
+l usr/lib/libintl.so.8 -> libintl.so.8.<version>
+f 0755 0:0 elf usr/lib/libintl.so.8.<version>
+l usr/lib/libjpeg.so.8 -> libjpeg.so.8.<version>
+f 0755 0:0 elf usr/lib/libjpeg.so.8.<version>
+l usr/lib/liblcms2.so.2 -> liblcms2.so.2.<version>
+f 0755 0:0 elf usr/lib/liblcms2.so.2.<version>
+l usr/lib/libltdl.so.7 -> libltdl.so.7.<version>
+f 0755 0:0 elf usr/lib/libltdl.so.7.<version>
+l usr/lib/liblzma.so.5 -> liblzma.so.5.<version>
+f 0755 0:0 elf usr/lib/liblzma.so.5.<version>
+l usr/lib/libmd.so.0 -> libmd.so.0.<version>
+f 0755 0:0 elf usr/lib/libmd.so.0.<version>
+l usr/lib/libncursesw.so.6 -> libncursesw.so.6.<version>
+f 0755 0:0 elf usr/lib/libncursesw.so.6.<version>
+l usr/lib/libnghttp2.so.14 -> libnghttp2.so.14.<version>
+f 0755 0:0 elf usr/lib/libnghttp2.so.14.<version>
+l usr/lib/libonig.so.5 -> libonig.so.5.<version>
+f 0755 0:0 elf usr/lib/libonig.so.5.<version>
+l usr/lib/libpcre2-8.so.0 -> libpcre2-8.so.0.<version>
+f 0755 0:0 elf usr/lib/libpcre2-8.so.0.<version>
+l usr/lib/libpng16.so.16 -> libpng16.so.16.<version>
+f 0755 0:0 elf usr/lib/libpng16.so.16.<version>
+l usr/lib/libpsl.so.5 -> libpsl.so.5.<version>
+f 0755 0:0 elf usr/lib/libpsl.so.5.<version>
+l usr/lib/libraqm.so.0 -> libraqm.so.0.<version>
+f 0755 0:0 elf usr/lib/libraqm.so.0.<version>
+l usr/lib/libreadline.so.8 -> libreadline.so.8.<version>
+f 0755 0:0 elf usr/lib/libreadline.so.8.<version>
+l usr/lib/libsharpyuv.so.0 -> libsharpyuv.so.0.<version>
+f 0755 0:0 elf usr/lib/libsharpyuv.so.0.<version>
+l usr/lib/libsodium.so.26 -> libsodium.so.26.<version>
+f 0755 0:0 elf usr/lib/libsodium.so.26.<version>
 l usr/lib/libsqlite3.so.0 -> libsqlite3.so.3.53.4
 f 0755 0:0 elf usr/lib/libsqlite3.so.3.53.4
 f 0755 0:0 elf usr/lib/libssl.so.3
-l usr/lib/libstdc++.so.6 -> libstdc++.so.6.0.34
-f 0755 0:0 elf usr/lib/libstdc++.so.6.0.34
-l usr/lib/libunistring.so.5 -> libunistring.so.5.2.1
-f 0755 0:0 elf usr/lib/libunistring.so.5.2.1
-l usr/lib/libwebp.so.7 -> libwebp.so.7.2.0
-f 0755 0:0 elf usr/lib/libwebp.so.7.2.0
-l usr/lib/libxcb.so.1 -> libxcb.so.1.1.0
-f 0755 0:0 elf usr/lib/libxcb.so.1.1.0
-l usr/lib/libxml2.so.2 -> libxml2.so.2.13.9
-f 0755 0:0 elf usr/lib/libxml2.so.2.13.9
-l usr/lib/libz.so.1 -> libz.so.1.3.2
-f 0755 0:0 elf usr/lib/libz.so.1.3.2
-l usr/lib/libzip.so.5 -> libzip.so.5.5
-f 0755 0:0 elf usr/lib/libzip.so.5.5
-l usr/lib/libzstd.so.1 -> libzstd.so.1.5.7
-f 0755 0:0 elf usr/lib/libzstd.so.1.5.7
+l usr/lib/libstdc++.so.6 -> libstdc++.so.6.<version>
+f 0755 0:0 elf usr/lib/libstdc++.so.6.<version>
+l usr/lib/libunistring.so.5 -> libunistring.so.5.<version>
+f 0755 0:0 elf usr/lib/libunistring.so.5.<version>
+l usr/lib/libwebp.so.7 -> libwebp.so.7.<version>
+f 0755 0:0 elf usr/lib/libwebp.so.7.<version>
+l usr/lib/libxcb.so.1 -> libxcb.so.1.<version>
+f 0755 0:0 elf usr/lib/libxcb.so.1.<version>
+l usr/lib/libxml2.so.2 -> libxml2.so.2.<version>
+f 0755 0:0 elf usr/lib/libxml2.so.2.<version>
+l usr/lib/libz.so.1 -> libz.so.1.<version>
+f 0755 0:0 elf usr/lib/libz.so.1.<version>
+l usr/lib/libzip.so.5 -> libzip.so.5.<version>
+f 0755 0:0 elf usr/lib/libzip.so.5.<version>
+l usr/lib/libzstd.so.1 -> libzstd.so.1.<version>
+f 0755 0:0 elf usr/lib/libzstd.so.1.<version>
 f 0755 0:0 elf usr/lib/ossl-modules/legacy.so
 f 0755 0:0 elf usr/local/bin/init
 f 0755 0:0 elf usr/local/lib/php/extensions/no-debug-non-zts-20250925/bcmath.so
