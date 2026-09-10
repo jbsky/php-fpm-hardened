@@ -226,10 +226,12 @@ RUN rm -rf /lib/apk /lib/libapk* /var/cache/apk /etc/apk /sbin/apk
 # ---------------------------------------------------------------------------
 FROM scratch
 
+# `image.licenses` decrit le LOGICIEL EMBARQUE, pas ce depot (Apache-2.0, cf.
+# LICENSE) : le moteur PHP et les extensions compilees ici sont sous PHP-3.01.
 LABEL org.opencontainers.image.title="php-fpm-hardened" \
       org.opencontainers.image.description="PHP-FPM FROM scratch — WordPress-optimized, non-root, zero shell" \
       org.opencontainers.image.vendor="jbsky" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="PHP-3.01" \
       org.opencontainers.image.source="https://github.com/jbsky/php-fpm-hardened" \
       security.hardening.tier="platine" \
       security.hardening.features="from-scratch,go-init,tini-pid1,zero-shell,non-root,compiler-hardening,cosign-signed,sbom,slsa-provenance"
