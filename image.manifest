@@ -1,4 +1,4 @@
-# image-manifest v2
+# image-manifest v3
 # image : php-fpm-hardened
 # genere par scripts/image-manifest.py -- ne pas editer a la main
 
@@ -138,7 +138,7 @@ f 0755 0:0 elf usr/local/lib/php/extensions/no-debug-non-zts-20250925/sodium.so
 f 0755 0:0 elf usr/local/lib/php/extensions/no-debug-non-zts-20250925/zip.so
 f 0755 0:0 elf usr/local/sbin/php-fpm
 
-count 239 etc/ssl/certs/
+present etc/ssl/certs/
 count 22 usr/local/etc/
 count 627 usr/share/
 count 8 var/
