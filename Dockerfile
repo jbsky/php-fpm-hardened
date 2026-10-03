@@ -120,7 +120,11 @@ SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 # reusing whatever package versions were cached the first time this exact
 # instruction text was built (apk packages get security updates within a
 # stable Alpine branch even though the base image digest doesn't change).
-RUN apk add --no-cache \
+# `apk add` never upgrades a package the base image already ships: libcrypto3,
+# libssl3, musl and zlib stayed at the digest's versions (OpenSSL 3.5.7 shipped
+# in 8.5.11.0 while 3.5.9 was in the index). `apk upgrade` comes first.
+RUN apk upgrade --no-cache \
+ && apk add --no-cache \
     argon2-libs ca-certificates freetype gmp gnu-libiconv icu-libs \
     imagemagick-libs libbz2 libcurl libgcc libjpeg-turbo libpng \
     libsodium libwebp libxml2 libzip oniguruma pcre2 \
