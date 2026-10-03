@@ -223,6 +223,11 @@ RUN mkdir -p /rootfs/usr/share \
  && cp -a /usr/share/icu /rootfs/usr/share/ \
  && test -s "$(find /rootfs/usr/share/icu -name 'icudt*.dat' -print -quit)"
 
+# prep garde sa base apk : c'est elle que lisent le scan CVE et la SBOM
+# attachee a l'image publiee. Avant le 2026-10-03 ce rm etait dans prep, et
+# Trivy y voyait « alpine, 0 vulnerabilite » (OpenSSL 3.5.7 passe inapercu).
+# L'image finale tire ses fichiers de prep-clean, sans aucun artefact apk.
+FROM prep AS prep-clean
 RUN rm -rf /lib/apk /lib/libapk* /var/cache/apk /etc/apk /sbin/apk
 
 # ---------------------------------------------------------------------------
@@ -241,30 +246,30 @@ LABEL org.opencontainers.image.title="php-fpm-hardened" \
       security.hardening.features="from-scratch,go-init,tini-pid1,zero-shell,non-root,compiler-hardening,cosign-signed,sbom,slsa-provenance"
 
 # User accounts
-COPY --link --from=prep /etc/passwd /etc/passwd
-COPY --link --from=prep /etc/group  /etc/group
+COPY --link --from=prep-clean /etc/passwd /etc/passwd
+COPY --link --from=prep-clean /etc/group  /etc/group
 
 # Dynamic linker (musl) + shared libraries
-COPY --link --from=prep /rootfs/ /
+COPY --link --from=prep-clean /rootfs/ /
 
 # PHP binary (php-fpm seul, voir la note du stage prep)
-COPY --link --from=prep /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
+COPY --link --from=prep-clean /usr/local/sbin/php-fpm /usr/local/sbin/php-fpm
 
 # PHP shared libraries (if any libphp*)
-COPY --link --from=prep /usr/local/lib/ /usr/local/lib/
+COPY --link --from=prep-clean /usr/local/lib/ /usr/local/lib/
 
 # PHP extensions + config
-COPY --link --from=prep /usr/local/etc/ /usr/local/etc/
+COPY --link --from=prep-clean /usr/local/etc/ /usr/local/etc/
 
 # Version info
-COPY --link --from=prep /etc/image-versions /etc/image-versions
+COPY --link --from=prep-clean /etc/image-versions /etc/image-versions
 
 # TLS trust store + timezone data
-COPY --link --from=prep /etc/ssl/ /etc/ssl/
-COPY --link --from=prep /usr/share/zoneinfo/ /usr/share/zoneinfo/
+COPY --link --from=prep-clean /etc/ssl/ /etc/ssl/
+COPY --link --from=prep-clean /usr/share/zoneinfo/ /usr/share/zoneinfo/
 
 # PID 1 — tini-static
-COPY --link --from=prep /sbin/tini-static /sbin/tini
+COPY --link --from=prep-clean /sbin/tini-static /sbin/tini
 
 # Go init binary (static, entrypoint + healthcheck + setup-dirs)
 COPY --link --from=gobuilder /init /usr/local/bin/init
