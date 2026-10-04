@@ -1,0 +1,9 @@
+{
+  "image": "php-fpm-hardened",
+  "version": {"file": "Dockerfile", "grep": "^FROM php:\\K[0-9]+\\.[0-9]+\\.[0-9]+"},
+  "revision": ["--source", "Dockerfile", "--grep", "^FROM php:\\K[0-9.]+", "--", "Dockerfile", "conf/", "scripts/entrypoint.sh", "init.go", "go.mod"],
+  "platforms": ["linux/amd64", "linux/arm64"],
+  "compose_service": "php-fpm",
+  "probes": [{"label": "PHP", "want": "version", "cmd": "docker exec php-fpm-hardened php-fpm -v", "regex": "PHP \\K[0-9]+\\.[0-9]+\\.[0-9]+"}],
+  "smoke": "./scripts/test.sh php-fpm-hardened"
+}
