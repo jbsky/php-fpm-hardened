@@ -37,7 +37,7 @@ permissions:
 
 jobs:
   pipeline:
-    uses: jbsky/hardened-ci/.github/workflows/build-push.yml@20dbd2ae1f65f1d72d88ec7a3c78ed716ba2009e # v1.2.0
+    uses: jbsky/hardened-ci/.github/workflows/build-push.yml@d7b9b1a28497c853ca5ce77ee7a9c2b6a89c7d6f # jbsky/hardened-ci#26 (preuve, a ne pas merger)
     permissions:
       contents: write
       packages: write
