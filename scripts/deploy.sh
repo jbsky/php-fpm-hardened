@@ -4,9 +4,9 @@
 # =====================================================================
 set -euo pipefail
 
-IMAGE="php-fpm-hardened"
-REGISTRY="${REGISTRY:-gitlab.home.arpa:5050}"
-NAMESPACE="${NAMESPACE:-docker/php}"
+NAME="php-fpm-hardened"
+# Meme reference que docker-compose.yml : la forge GitLab est morte.
+IMAGE="${IMAGE:-docker.io/jbsky/${NAME}:latest}"
 
 case "${1:-build}" in
   build)
@@ -19,7 +19,7 @@ case "${1:-build}" in
       -v /var/run/docker.sock:/var/run/docker.sock \
       aquasec/trivy:latest image \
       --severity HIGH,CRITICAL --ignore-unfixed \
-      "${REGISTRY}/${NAMESPACE}:latest"
+      "${IMAGE}"
     ;;
   sbom)
     echo "==> SBOM generation (syft)"
@@ -27,8 +27,8 @@ case "${1:-build}" in
     docker run --rm \
       -v /var/run/docker.sock:/var/run/docker.sock \
       anchore/syft:latest \
-      "${REGISTRY}/${NAMESPACE}:latest" -o spdx-json > "sbom/${IMAGE}.spdx.json"
-    echo "SBOM saved to sbom/${IMAGE}.spdx.json"
+      "${IMAGE}" -o spdx-json > "sbom/${NAME}.spdx.json"
+    echo "SBOM saved to sbom/${NAME}.spdx.json"
     ;;
   *)
     echo "Usage: $0 {build|scan|sbom}"

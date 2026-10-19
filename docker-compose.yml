@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${REGISTRY:-gitlab.home.arpa:5050}/docker/php:${TAG:-latest}
+    image: ${IMAGE:-docker.io/jbsky/php-fpm-hardened:latest}
     container_name: php-fpm-hardened
     hostname: php-fpm
     environment:
