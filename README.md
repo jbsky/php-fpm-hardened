@@ -49,7 +49,7 @@ inaccessible. **En production, epinglez le tag qui porte le compteur.**
 <!-- BEGIN:tags (genere par la CI -- ne pas editer a la main) -->
 | Image | Version amont | Tag immuable a epingler |
 |-------|---------------|-------------------------|
-| `jbsky/php-fpm-hardened` | `8.5.12` | `8.5.12.3` |
+| `jbsky/php-fpm-hardened` | `8.5.12` | `8.5.12.4` |
 <!-- END:tags -->
 
 Ce tableau, les versions citees dans le texte et les tags qui apparaissent
