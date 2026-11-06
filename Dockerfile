@@ -17,7 +17,7 @@
 # ---------------------------------------------------------------------------
 # Stage 0: builder — compile PHP extensions from source
 # ---------------------------------------------------------------------------
-FROM php:8.5.12-fpm-alpine@sha256:4c2818074ec49f6abe46620f3965e0cb75bc3a5f2b417edd1aacaba6f091c40e AS builder
+FROM php:8.5.12-fpm-alpine@sha256:64535609509e0fd5c8529359e6b599a68ce42089defd565f7881efdae7687cea AS builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -100,7 +100,7 @@ RUN php -v | head -1 | awk '{print $2}' > /tmp/PHP_VER && \
 # ---------------------------------------------------------------------------
 # Stage 1: Go builder (entrypoint + healthcheck)
 # ---------------------------------------------------------------------------
-FROM golang:1.27-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS gobuilder
+FROM golang:1.27-alpine@sha256:fa3d596898d9f126af7c01d14ee7597bab3f39cccf392ef36b69fe77cd681f18 AS gobuilder
 WORKDIR /build
 COPY go.mod init.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /init .
@@ -108,7 +108,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags='-s -w' -o /init .
 # ---------------------------------------------------------------------------
 # Stage 2: prep (assemble runtime filesystem)
 # ---------------------------------------------------------------------------
-FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS prep
+FROM alpine:3.24@sha256:3f4d6b32e26703c6082839234f43769d5046b3ac7c910033911d1e71d8cd630a AS prep
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
