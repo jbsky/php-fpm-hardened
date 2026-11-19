@@ -1,50 +1,76 @@
-# PHP-FPM Hardened (WordPress-optimized)
+# PHP-FPM Hardened
 
 [![Build](https://github.com/jbsky/php-fpm-hardened/actions/workflows/build-push.yml/badge.svg)](https://github.com/jbsky/php-fpm-hardened/actions/workflows/build-push.yml)
 [![Docker Hub](https://img.shields.io/docker/v/jbsky/php-fpm-hardened?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/jbsky/php-fpm-hardened)
-[![Hardening](https://img.shields.io/badge/hardening-platine-blueviolet)](https://github.com/jbsky/php-fpm-hardened#security--verification)
+[![Hardening](https://img.shields.io/badge/hardening-platine-blueviolet)](https://github.com/jbsky/php-fpm-hardened#hardening)
 
-Image Docker PHP-FPM <!--v:php-fpm-hardened-->8.5.12<!--/v--> hardenee (FROM scratch, Go init, tini PID 1), optimisee WordPress.
+PHP-FPM <!--v:php-fpm-hardened-->8.5.12<!--/v--> in a `FROM scratch` image: no shell, no
+package manager, no PHP CLI. Only `php-fpm`, the extensions WordPress uses,
+their libraries, `tini` and a static Go init. Meant to run WordPress behind
+[nginx-hardened](https://github.com/jbsky/nginx-hardened), for instance with
+the [wordpress-hardened](https://github.com/jbsky/wordpress-hardened) Helm
+chart.
 
-## Extensions incluses
+## What is built
 
-| Extension | Usage |
-|-----------|-------|
-| opcache + JIT | Performances (cache bytecode + tracing JIT) |
-| gd | Manipulation d'images (thumbnails, crops) |
-| imagick | Traitement images avance (WebP, PDF previews) |
-| mysqli | Base de donnees WordPress |
-| zip / bz2 | Plugins, themes, backups |
-| intl | Internationalisation |
-| exif | Metadonnees photos |
-| bcmath / gmp | Calculs precision (WooCommerce, crypto) |
-| redis | Object cache (WP Redis plugin) |
+PHP comes from the official `php:<version>-fpm-alpine` image, pinned by tag
+and digest in the `FROM` line of the Dockerfile; the extensions are compiled
+in the `builder` stage, then only `php-fpm`, the extensions and their library
+closure are copied into the final image.
+
+| Extension | Use |
+|---|---|
+| opcache + JIT | performance (bytecode cache + tracing JIT) |
+| gd | image manipulation (thumbnails, crops) |
+| imagick | advanced image processing (WebP, PDF previews) |
+| mysqli | WordPress database |
+| zip / bz2 | plugins, themes, backups |
+| intl | internationalization (full ICU data) |
+| exif | photo metadata |
+| bcmath / gmp | precise arithmetic (WooCommerce, crypto) |
+| redis | object cache (Redis plugin) |
 | curl | HTTP client |
-| sodium | Cryptographie (signatures WP) |
+| sodium | cryptography (WordPress signatures) |
+
+- **imagick and redis** have no stable PECL release for PHP 8.5 yet: they are
+  built from the head of their upstream git repositories at build time, not
+  from a pinned version. The versions built are recorded in
+  `/etc/image-versions`.
+- **No PHP CLI**: 28.8 MB the service never uses. Tests talk FastCGI to
+  `php-fpm`, exactly as nginx does in production.
+- [`Dockerfile.wordpress`](Dockerfile.wordpress), a variant with WordPress
+  core layered in, is not built by CI.
 
 ## Hardening
 
-| Mesure | Detail |
-|--------|--------|
-| FROM scratch | Zero shell, zero package manager dans l'image finale |
-| Go static init | Binary entrypoint + healthcheck (pas de script shell) |
-| tini PID 1 | Signal forwarding + zombie reaping |
-| Non-root | uid 1999, user `phpfpm` |
-| Compiler hardening | RELRO, PIE, SSP, FORTIFY_SOURCE, stack-clash, NX |
-| disable_functions | exec, passthru, shell_exec, system, proc_open, popen |
-| open_basedir | Restreint a `/var/www/html:/tmp` |
-| expose_php = Off | Pas de header X-Powered-By |
-| Sessions securisees | httponly, secure, samesite strict |
-| Docker Compose | `read_only`, `no-new-privileges`, `cap_drop: ALL` |
-| tmpfs | /tmp, /var/run, /var/log (pas de write sur rootfs) |
+Tier **platine** (OCI label `security.hardening.tier`): a `FROM scratch` image
+with no shell and no package manager, a non-root user, a static Go init behind
+`tini` as PID 1, and binaries built with hardening flags.
+
+- Non-root user `1999:1999` (`phpfpm`), no capability; tested under a
+  read-only rootfs, `cap_drop: ALL` and `no-new-privileges`.
+- Compiler flags for the extensions: `-fstack-protector-strong`,
+  `-fstack-clash-protection`, `_FORTIFY_SOURCE=2`, full RELRO; stripped.
+- Libraries copied from a dependency closure resolved at build time
+  (`lddtree`), never `/lib` or `/usr/lib` wholesale.
+- PHP settings ([`conf/php/php-hardened.ini`](conf/php/php-hardened.ini)):
+  - `disable_functions`: `exec`, `passthru`, `shell_exec`, `system`,
+    `proc_open`, `popen`, `curl_multi_exec`, `parse_ini_file`, `show_source`,
+    `pcntl_exec`;
+  - `open_basedir = /var/www/html:/tmp:/usr/local/lib/php`;
+  - `expose_php = Off` (no `X-Powered-By` header);
+  - session cookies `httponly`, `secure`, `samesite=Strict`.
+- Healthcheck: a FastCGI PING/PONG on `127.0.0.1:9000`, by the init, with no
+  `cgi-fcgi` binary.
 
 ## Tags
 
-Trois tags par image : `latest` (dernier build de `main`), la version amont
-seule, et la version amont suffixee d'un **compteur de revision**. Les deux
-premiers sont **reecrits en place** a chaque rebuild -- bump Alpine, correctif
-CVE, changement de config -- et le build qu'ils designaient devient alors
-inaccessible. **En production, epinglez le tag qui porte le compteur.**
+Every image is published under three tags: `latest` (last build of `main`),
+the upstream version alone, and the upstream version followed by a **revision
+counter**. The first two are **overwritten in place** on every rebuild (Alpine
+update, CVE fix, configuration change), and the build they pointed to can no
+longer be pulled by them. **In production, pin the tag that carries the
+counter.**
 
 <!-- BEGIN:tags (genere par la CI -- ne pas editer a la main) -->
 | Image | Version amont | Tag immuable a epingler |
@@ -52,132 +78,115 @@ inaccessible. **En production, epinglez le tag qui porte le compteur.**
 | `jbsky/php-fpm-hardened` | `8.5.12` | `8.5.12.11` |
 <!-- END:tags -->
 
-Ce tableau, les versions citees dans le texte et les tags qui apparaissent
-dans les exemples sont tous rendus par `update-readme-tags.sh` (jbsky/hardened-ci) apres
-chaque publication -- ne rien editer a la main.
+This table, the versions quoted in the text and the tags in the examples are
+rendered by `update-readme-tags.sh` ([hardened-ci](https://github.com/jbsky/hardened-ci))
+after each publication: do not edit them by hand.
 
-Le compteur compte les commits qui touchent les inputs de l'image (`Dockerfile`, `conf/`, `scripts/entrypoint.sh`)
-depuis le dernier changement de version amont, et repart a `0` a chaque nouvelle
-version amont. Un commit qui ne touche que `.github/` ne l'incremente pas.
+The upstream version is read from the `FROM php:<version>` line of the
+Dockerfile. The counter counts the commits that touch the image inputs (the
+`revision` list of [`.github/hardened-ci.json`](.github/hardened-ci.json))
+since that line last changed, and restarts at `0` with each new PHP version. A
+commit that only touches `.github/` does not increment it.
 
-Les deux registres, `docker.io` et `ghcr.io`, publient les memes tags avec le
-meme digest.
+`docker.io` and `ghcr.io` publish the same tags with the same digest, for
+`linux/amd64` and `linux/arm64`. Each registry keeps the last six immutable
+tags of an image, so that superseded builds do not stay pullable: move your
+pin forward.
 
-L'ancre de version est la ligne `FROM php:<version>` du Dockerfile.
+`version-watch` checks PHP daily for a new patch release in the 8.5 branch,
+moves the `FROM` line and republishes; a new minor or major branch is a manual
+change.
 
-## Usage rapide
+## Usage
+
+```bash
+docker run -d --name php-fpm \
+  --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+  --tmpfs /tmp:size=64m,mode=1777,nodev,nosuid,noexec \
+  --tmpfs /var/run/php-fpm:size=1m,mode=0755,uid=1999,gid=1999 \
+  --tmpfs /var/log/php-fpm:size=32m,mode=0755,uid=1999,gid=1999 \
+  -v html:/var/www/html \
+  jbsky/php-fpm-hardened:8.5.12.11
+```
+
+- FPM listens on port 9000 (FastCGI); the document root is `/var/www/html`,
+  which must be readable by uid `1999`.
+- The configuration files live in `conf/` ([`php/`](conf/php) and
+  [`fpm/`](conf/fpm)); to change them on a read-only rootfs, mount your own
+  over `/usr/local/etc/php/conf.d/` or `/usr/local/etc/php-fpm.d/`.
+
+### Configuration
+
+| Environment variable | Default | Description |
+|---|---|---|
+| `WP_DEBUG` | `0` | `1` turns on PHP debug mode (`display_errors`, opcache revalidation, JIT off) |
+| `PHP_PM_MAX_CHILDREN` | `50` | Maximum number of FPM workers |
+| `PHP_MEMORY_LIMIT` | `256M` | PHP memory limit |
+| `PHP_UPLOAD_MAX_FILESIZE` | `64M` | Maximum upload size (and `post_max_size`) |
+| `TZ` | `UTC` | Time zone of the process; PHP's `date.timezone` stays `UTC` |
+
+These four PHP overrides are written by the init into the configuration
+directories at startup: **they only take effect on a writable rootfs**. Under
+`--read-only`, the init logs a warning and the shipped values (the defaults
+above) stay.
+
+## Build and test
 
 ```bash
 cp .env.example .env
-make build   # Build l'image
-make up      # Demarre la stack
-make test    # Smoke tests (healthcheck + extensions + security)
-make scan    # Trivy vulnerability scan
-make down    # Arrete
+make build   # docker compose build (the version comes from the FROM line)
+make up      # start the compose stack
+make test    # scripts/test.sh against the running container
+make scan    # Trivy
 ```
 
-## Configuration runtime
+`scripts/test.sh` checks the FPM ping/pong, the extensions, the PHP version,
+`expose_php`, disabled functions, the non-root user, the read-only rootfs and
+`no-new-privileges`, the JIT configuration, then runs real scripts through
+FastCGI ([`scripts/fcgi-request.py`](scripts/fcgi-request.py), standard
+library only) -- for instance `intl` with the full ICU data.
 
-Variables d'environnement (via `.env` ou docker-compose) :
+## Verification
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `WP_DEBUG` | `0` | Active le mode debug PHP (display_errors, opcache off) |
-| `PHP_PM_MAX_CHILDREN` | `50` | Nombre max de workers FPM |
-| `PHP_MEMORY_LIMIT` | `256M` | Limite memoire PHP |
-| `PHP_UPLOAD_MAX_FILESIZE` | `64M` | Taille max upload |
-| `TZ` | `UTC` | Timezone |
-
-## Architecture
-
-```
-php-fpm-hardened/
-├── Dockerfile              # Multi-stage build (Alpine → FROM scratch)
-├── Dockerfile.wordpress    # Variante avec WP-CLI
-├── docker-compose.yml      # Stack hardenee (read_only, cap_drop)
-├── Makefile                # Raccourcis dev
-├── versions.json           # Versions trackees (PHP, Alpine)
-├── go.mod + init.go        # Go static init binary
-├── conf/
-│   ├── php/
-│   │   ├── php-hardened.ini    # Securite PHP
-│   │   ├── opcache.ini         # OPcache + JIT
-│   │   └── wordpress.ini       # Uploads, realpath cache
-│   └── fpm/
-│       ├── php-fpm.conf        # Config master FPM
-│       ├── www.conf            # Pool www (workers, status)
-│       └── docker.conf         # Docker stderr override
-├── scripts/
-│   ├── entrypoint.sh       # Init runtime (legacy, unused in Platine)
-│   ├── test.sh             # Smoke tests
-│   └── deploy.sh           # Build/scan/sbom helper
-└── .github/
-    ├── dependabot.yml      # Weekly GH Actions + Docker updates
-    └── workflows/
-        ├── build-push.yml      # Build + sign + scan + release
-        ├── version-watch.yml   # Daily PHP patch detection
-        └── security-audit.yml  # Weekly Trivy + Grype
-```
-
-## CI/CD
-
-Dual pipeline (GitLab + GitHub Actions) :
-
-| Stage | Description |
-|-------|-------------|
-| lint | hadolint + shellcheck |
-| build | buildx multi-arch + push (ghcr.io + Docker Hub) |
-| sign | cosign keyless OIDC |
-| scan | Trivy SARIF + Grype |
-| attest | SBOM + SLSA provenance (level 2) |
-| version-watch | Cron quotidien — rebuild auto sur nouvelle version PHP |
-| security-audit | Cron hebdomadaire — scan vulnerabilites sur images publiees |
-
-## Security & Verification
-
-This image is signed with [cosign](https://github.com/sigstore/cosign) using keyless OIDC (Sigstore).
-
-### Verify image signature
+Images are signed with [cosign](https://github.com/sigstore/cosign) (keyless,
+GitHub OIDC) by the shared [hardened-ci](https://github.com/jbsky/hardened-ci)
+pipeline. The certificate names that workflow and, in an extension, this
+repository: the commands below require both.
 
 ```bash
-# From ghcr.io (signatures stored natively)
-cosign verify \
+# ghcr.io
+cosign verify ghcr.io/jbsky/php-fpm-hardened:8.5.12.11 \
   --certificate-identity-regexp '^https://github.com/(jbsky/php-fpm-hardened|jbsky/hardened-ci)/' \
   --certificate-github-workflow-repository jbsky/php-fpm-hardened \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/jbsky/php-fpm-hardened:latest
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
-# From Docker Hub (signatures stored in ghcr.io)
+# Docker Hub (the signature is stored on ghcr.io)
 COSIGN_REPOSITORY=ghcr.io/jbsky/php-fpm-hardened \
-  cosign verify \
+  cosign verify docker.io/jbsky/php-fpm-hardened:8.5.12.11 \
   --certificate-identity-regexp '^https://github.com/(jbsky/php-fpm-hardened|jbsky/hardened-ci)/' \
   --certificate-github-workflow-repository jbsky/php-fpm-hardened \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  docker.io/jbsky/php-fpm-hardened:latest
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
-### Hardening tier "Platine" guarantees
-
-| Property | Description |
-|----------|-------------|
-| FROM scratch | No base image, no shell, no package manager |
-| Go static init | Binary entrypoint + healthcheck (no script) |
-| tini PID 1 | Proper signal forwarding and zombie reaping |
-| Non-root | Runs as unprivileged UID |
-| Compiler hardening | RELRO, PIE, SSP, FORTIFY_SOURCE, stack-clash, NX |
-| Cosign signed | OIDC keyless signature via Sigstore transparency log |
-| SBOM | Software Bill of Materials embedded in manifest |
-| SLSA provenance | Build provenance attestation (level 2) |
+Each published digest also carries a CycloneDX SBOM (the `prep` stage the
+image is assembled from, plus its Go binaries), attested with cosign, and a
+GitHub SLSA build provenance attestation. The pipeline lints, builds, scans the
+`prep` stage with Trivy, tests the exact digest it is about to publish (image
+manifest, dependency closure, functional tests), then promotes and signs it.
+Base image digests follow upstream daily (`base-watch`), a fixable Alpine
+package CVE triggers a rebuild (`cve-watch`), and the published image is
+audited weekly (`security-audit`: Trivy, Grype, cosign). Audit status and
+documented exceptions: [`SECURITY.md`](SECURITY.md).
 
 ## License
 
-Le contenu de ce depot -- Dockerfile, `init.go`, scripts et chaine CI -- est
-sous **Apache-2.0**, voir [`LICENSE`](LICENSE). Copyright 2026 jbsky.
+The contents of this repository (Dockerfile, `init.go`, scripts and CI) are
+licensed under **Apache-2.0**, see [`LICENSE`](LICENSE). Copyright 2026 jbsky.
 
-Le logiciel embarque dans l'image garde la sienne : le moteur PHP et les
-extensions compilees restent sous la licence de leur amont. Les deux plans ne
-se melangent pas -- `init.go` est un programme distinct, qui execute php-fpm
-sans etre lie a ses bibliotheques.
+The software shipped in the image keeps its own license: the PHP engine and
+the compiled extensions stay under their upstream's. The two never mix:
+`init.go` is a separate program that executes `php-fpm` without being linked
+to its libraries.
 
-Contributions : voir [`CONTRIBUTING.md`](CONTRIBUTING.md), un `Signed-off-by`
-est demande.
+Contributions: see [`CONTRIBUTING.md`](CONTRIBUTING.md); a `Signed-off-by` is
+required.
