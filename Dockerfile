@@ -290,4 +290,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/init"]
 CMD ["php-fpm"]
-# cve-rebuild 2026-11-03 CVE-2026-117610, CVE-2026-118370 -- paquets Alpine corriges, pris par apk upgrade du stage prep (cve-watch run 41639889450)
+# cve-rebuild 2026-11-27 CVE-2026-11979, CVE-2026-86138, CVE-2026-86139, CVE-2026-86140, CVE-2026-86142, CVE-2026-86143 -- paquets Alpine corriges, pris par apk upgrade du stage prep (cve-watch run 46024944542)
